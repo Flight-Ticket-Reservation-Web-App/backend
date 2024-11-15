@@ -3,8 +3,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FlightModule } from './flight/flight.module';
-import { BookingModule } from './booking/booking.module';
 import { UserModule } from './user/user.module';
+import { AirportModule } from './airport/airport.module';
 
 @Module({
   imports: [
@@ -20,8 +20,8 @@ import { UserModule } from './user/user.module';
       autoLoadEntities: true,
     }),
     FlightModule,
-    BookingModule,
     UserModule,
+    AirportModule,
   ],
   controllers: [AppController],
   providers: [AppService],
