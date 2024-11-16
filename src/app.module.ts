@@ -5,6 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FlightModule } from './flight/flight.module';
 import { UserModule } from './user/user.module';
 import { AirportModule } from './airport/airport.module';
+import { Airport } from './airport/entities/airport.entity';
+import { User } from './user/entities/user.entity';
+import { DomesticFlight } from './flight/entities/domestic-flights.entity';
+import { InternationalFlight } from './flight/entities/international-flights.entity';
 
 @Module({
   imports: [
@@ -15,7 +19,7 @@ import { AirportModule } from './airport/airport.module';
       username: 'postgres',
       password: 'postgres',
       database: 'postgres',
-      entities: [],
+      entities: [Airport, User, DomesticFlight, InternationalFlight],
       synchronize: true,
       autoLoadEntities: true,
     }),
