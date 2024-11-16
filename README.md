@@ -62,9 +62,9 @@ $ npm run test:cov
 
 If you want to reset the database to match the state in `dump.sql`, you need to remove the existing Docker volume:
 
-```bash
-$ docker-compose down -v
-$ docker-compose up --build
+````bash
+docker-compose down -v
+docker-compose up --build
 ```
 
 ## Deployment
@@ -76,7 +76,7 @@ If you are looking for a cloud-based platform to deploy your NestJS application,
 ```bash
 $ npm install -g mau
 $ mau deploy
-```
+````
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
