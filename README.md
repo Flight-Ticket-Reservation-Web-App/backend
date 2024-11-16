@@ -58,14 +58,14 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-### Resetting the Database to Initial State
+## Resetting the Database to Initial State
 
 If you want to reset the database to match the state in `dump.sql`, you need to remove the existing Docker volume:
 
 ````bash
 docker-compose down -v
 docker-compose up --build
-
+```
 
 ## Deployment
 
