@@ -43,4 +43,13 @@ export class InternationalFlight {
 
   @Column('numeric', { precision: 10, scale: 2 })
   first_fare: number;
+
+  @Column('integer')
+  economy_seats: number;
+
+  @Column('integer')
+  business_seats: number;
+
+  @Column('integer')
+  first_seats: number;
 }
