@@ -32,4 +32,11 @@ export class UserController {
   ) {
     return this.userService.updateProfilePessimistic(+id, updateProfileDto);
   }
+  @Patch('distributed/:id')
+  updateProfileDistributed(
+    @Param('id') id: string,
+    @Body() updateProfileDto: UpdateUserDto,
+  ) {
+    return this.userService.updateProfileDistributed(+id, updateProfileDto);
+  }
 }
