@@ -1,62 +1,64 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { DomesticFlight } from './entities/domestic-flights.entity';
-import { InternationalFlight } from './entities/international-flights.entity';
+import { PrismaService } from '../prisma.service';
+import { domestic_flights, international_flights } from '@prisma/client';
 
 @Injectable()
 export class FlightService {
-  constructor(
-    @InjectRepository(DomesticFlight)
-    private readonly domesticFlightRepository: Repository<DomesticFlight>,
-    @InjectRepository(InternationalFlight)
-    private readonly internationalFlightRepository: Repository<InternationalFlight>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   // Domestic Flights
-  findAllDomestic(): Promise<DomesticFlight[]> {
-    return this.domesticFlightRepository.find();
+  async findAllDomestic(): Promise<domestic_flights[]> {
+    return this.prisma.domestic_flights.findMany();
   }
 
-  findOneDomestic(id: number): Promise<DomesticFlight> {
-    return this.domesticFlightRepository.findOne({ where: { id } });
+  async findOneDomestic(id: number): Promise<domestic_flights> {
+    return this.prisma.domestic_flights.findUnique({ where: { id } });
   }
 
-  createDomestic(flight: DomesticFlight): Promise<DomesticFlight> {
-    return this.domesticFlightRepository.save(flight);
+  async createDomestic(flight: domestic_flights): Promise<domestic_flights> {
+    return this.prisma.domestic_flights.create({ data: flight });
   }
 
-  updateDomestic(id: number, flight: DomesticFlight): Promise<any> {
-    return this.domesticFlightRepository.update(id, flight);
+  async updateDomestic(
+    id: number,
+    flight: domestic_flights,
+  ): Promise<domestic_flights> {
+    return this.prisma.domestic_flights.update({
+      where: { id },
+      data: flight,
+    });
   }
 
-  deleteDomestic(id: number): Promise<any> {
-    return this.domesticFlightRepository.delete(id);
+  async deleteDomestic(id: number): Promise<domestic_flights> {
+    return this.prisma.domestic_flights.delete({ where: { id } });
   }
 
   // International Flights
-  findAllInternational(): Promise<InternationalFlight[]> {
-    return this.internationalFlightRepository.find();
+  async findAllInternational(): Promise<international_flights[]> {
+    return this.prisma.international_flights.findMany();
   }
 
-  findOneInternational(index: number): Promise<InternationalFlight> {
-    return this.internationalFlightRepository.findOne({ where: { index } });
+  async findOneInternational(index: number): Promise<international_flights> {
+    return this.prisma.international_flights.findUnique({ where: { index } });
   }
 
-  createInternational(
-    flight: InternationalFlight,
-  ): Promise<InternationalFlight> {
-    return this.internationalFlightRepository.save(flight);
+  async createInternational(
+    flight: international_flights,
+  ): Promise<international_flights> {
+    return this.prisma.international_flights.create({ data: flight });
   }
 
-  updateInternational(
+  async updateInternational(
     index: number,
-    flight: InternationalFlight,
-  ): Promise<any> {
-    return this.internationalFlightRepository.update(index, flight);
+    flight: international_flights,
+  ): Promise<international_flights> {
+    return this.prisma.international_flights.update({
+      where: { index },
+      data: flight,
+    });
   }
 
-  deleteInternational(index: number): Promise<any> {
-    return this.internationalFlightRepository.delete(index);
+  async deleteInternational(index: number): Promise<international_flights> {
+    return this.prisma.international_flights.delete({ where: { index } });
   }
 }
