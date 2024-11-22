@@ -17,11 +17,19 @@ export class UserController {
     return this.userService.createUser(createUserDto);
   }
 
-  @Patch(':id')
-  updateProfile(
+  @Patch('optimistic/:id')
+  updateProfileOptimistic(
     @Param('id') id: string,
     @Body() updateProfileDto: UpdateUserDto,
   ) {
-    return this.userService.updateProfile(+id, updateProfileDto);
+    return this.userService.updateProfileOptimistic(+id, updateProfileDto);
+  }
+
+  @Patch('pessimistic/:id')
+  updateProfilePessimistic(
+    @Param('id') id: string,
+    @Body() updateProfileDto: UpdateUserDto,
+  ) {
+    return this.userService.updateProfilePessimistic(+id, updateProfileDto);
   }
 }
