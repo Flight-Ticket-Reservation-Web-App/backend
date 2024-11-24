@@ -3,12 +3,13 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { user as User } from '@prisma/client';
 import Redlock from 'redlock';
 import { Redis } from 'ioredis';
+import { hashSync } from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -37,10 +38,22 @@ export class UserService {
     return user;
   }
 
-  async createUser(createUserDto: CreateUserDto): Promise<User> {
-    return this.prisma.user.create({
-      data: createUserDto,
+  async createUser(createUserDto: CreateUserDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: createUserDto.email },
     });
+    if (user) {
+      throw new ConflictException('User with this email already exists');
+    }
+    const newUser = await this.prisma.user.create({
+      data: {
+        ...createUserDto,
+        password: hashSync(createUserDto.password, 10),
+      },
+    });
+
+    const { password, ...userWithoutPassword } = newUser;
+    return userWithoutPassword;
   }
 
   // Distributed Locking with Redis

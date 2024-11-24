@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { domestic_flights, international_flights } from '@prisma/client';
 
 @Injectable()
@@ -11,8 +11,8 @@ export class FlightService {
     return this.prisma.domestic_flights.findMany();
   }
 
-  async findOneDomestic(id: number): Promise<domestic_flights> {
-    return this.prisma.domestic_flights.findUnique({ where: { id } });
+  async findOneDomestic(index: number): Promise<domestic_flights> {
+    return this.prisma.domestic_flights.findUnique({ where: { index } });
   }
 
   async createDomestic(flight: domestic_flights): Promise<domestic_flights> {
@@ -20,17 +20,17 @@ export class FlightService {
   }
 
   async updateDomestic(
-    id: number,
+    index: number,
     flight: domestic_flights,
   ): Promise<domestic_flights> {
     return this.prisma.domestic_flights.update({
-      where: { id },
+      where: { index },
       data: flight,
     });
   }
 
-  async deleteDomestic(id: number): Promise<domestic_flights> {
-    return this.prisma.domestic_flights.delete({ where: { id } });
+  async deleteDomestic(index: number): Promise<domestic_flights> {
+    return this.prisma.domestic_flights.delete({ where: { index } });
   }
 
   // International Flights

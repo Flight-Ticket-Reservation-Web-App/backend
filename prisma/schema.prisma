@@ -20,7 +20,7 @@ model domestic_flights {
   flight_no       String
   airline_code    String
   airline         String
-  id              Int      @id(map: "PK_59bfb67131598b2636f801d47bb") @default(autoincrement())
+  index           Int      @id(map: "PK_0dd12715e072efe6d7e24c18796") @default(autoincrement())
   depart_time     DateTime @db.Time(6)
   depart_weekday  Int
   duration        Int
