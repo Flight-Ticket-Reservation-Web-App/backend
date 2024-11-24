@@ -3,13 +3,13 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { CreateUserDto } from '@/modules/user/dto/create-user.dto';
+import { UpdateUserDto } from '@/modules/user/dto/update-user.dto';
 import { user as User } from '@prisma/client';
 import Redlock from 'redlock';
 import { Redis } from 'ioredis';
-import { hashSync } from 'bcrypt';
+import { hashPasswordHelper } from '@/utils/helper';
 
 @Injectable()
 export class UserService {
@@ -39,19 +39,20 @@ export class UserService {
   }
 
   async createUser(createUserDto: CreateUserDto) {
+    console.log('createUserDto', createUserDto);
     const user = await this.prisma.user.findUnique({
       where: { email: createUserDto.email },
     });
     if (user) {
       throw new ConflictException('User with this email already exists');
     }
+    const hashPassWord = await hashPasswordHelper(createUserDto.password);
     const newUser = await this.prisma.user.create({
       data: {
         ...createUserDto,
-        password: hashSync(createUserDto.password, 10),
+        password: hashPassWord,
       },
     });
-
     const { password, ...userWithoutPassword } = newUser;
     return userWithoutPassword;
   }

@@ -7,9 +7,9 @@ import {
   Body,
   Param,
 } from '@nestjs/common';
-import { FlightService } from './flight.service';
+import { FlightService } from '@/modules/flight/flight.service';
 import { domestic_flights, international_flights } from '@prisma/client';
-import { Role } from '../role/role.decorator';
+import { Role } from '@/modules/role/role.decorator';
 
 @Role('admin')
 @Controller('admin/flights')

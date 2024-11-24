@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { CreateAirportDto } from './dto/create-airport.dto';
-import { UpdateAirportDto } from './dto/update-airport.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { CreateAirportDto } from '@/modules/airport/dto/create-airport.dto';
+import { UpdateAirportDto } from '@/modules/airport/dto/update-airport.dto';
 
 @Injectable()
 export class AirportService {

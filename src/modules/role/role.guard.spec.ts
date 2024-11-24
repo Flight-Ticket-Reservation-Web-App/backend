@@ -1,4 +1,4 @@
-import { RoleGuard } from './role.guard';
+import { RoleGuard } from '@/modules/role/role.guard';
 import { Reflector } from '@nestjs/core';
 import { ExecutionContext } from '@nestjs/common';
 
