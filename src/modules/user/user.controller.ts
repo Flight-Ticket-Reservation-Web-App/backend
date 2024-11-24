@@ -1,7 +1,6 @@
 import { Controller, Get, Patch, Post, Body, Param } from '@nestjs/common';
 import { UserService } from '@/modules/user/user.service';
 import { CreateUserDto } from '@/modules/user/dto/create-user.dto';
-import { UpdateUserDto } from '@/modules/user/dto/update-user.dto';
 
 @Controller('user')
 export class UserController {
@@ -15,28 +14,5 @@ export class UserController {
   @Post()
   createUser(@Body() createUserDto: CreateUserDto) {
     return this.userService.createUser(createUserDto);
-  }
-
-  @Patch('optimistic/:id')
-  updateProfileOptimistic(
-    @Param('id') id: string,
-    @Body() updateProfileDto: UpdateUserDto,
-  ) {
-    return this.userService.updateProfileOptimistic(+id, updateProfileDto);
-  }
-
-  @Patch('pessimistic/:id')
-  updateProfilePessimistic(
-    @Param('id') id: string,
-    @Body() updateProfileDto: UpdateUserDto,
-  ) {
-    return this.userService.updateProfilePessimistic(+id, updateProfileDto);
-  }
-  @Patch('distributed/:id')
-  updateProfileDistributed(
-    @Param('id') id: string,
-    @Body() updateProfileDto: UpdateUserDto,
-  ) {
-    return this.userService.updateProfileDistributed(+id, updateProfileDto);
   }
 }
