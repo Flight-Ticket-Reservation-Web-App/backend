@@ -20,7 +20,6 @@ model domestic_flights {
   flight_no       String
   airline_code    String
   airline         String
-  index           Int      @id(map: "PK_0dd12715e072efe6d7e24c18796") @default(autoincrement())
   depart_time     DateTime @db.Time(6)
   depart_weekday  Int
   duration        Int
@@ -29,6 +28,7 @@ model domestic_flights {
   economy_fare    Decimal  @db.Decimal(10, 2)
   business_fare   Decimal  @db.Decimal(10, 2)
   first_fare      Decimal  @db.Decimal(10, 2)
+  id              Int      @id(map: "PK_59bfb67131598b2636f801d47bb") @default(autoincrement())
 }
 
 model international_flights {
@@ -49,10 +49,18 @@ model international_flights {
 }
 
 model user {
-  id        Int     @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
-  email     String  @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
-  password  String  @db.VarChar
-  firstName String? @db.VarChar
-  lastName  String? @db.VarChar
-  role      String  @default("user") @db.VarChar
+  id          Int     @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
+  email       String  @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
+  password    String  @db.VarChar
+  firstName   String  @db.VarChar
+  lastName    String  @db.VarChar
+  isActive    Boolean @default(false)
+  role        Role    @default(USER)
+  codeId      String  @db.VarChar
+  codeExpired String  @db.VarChar
+}
+
+enum Role {
+  USER
+  ADMIN
 }

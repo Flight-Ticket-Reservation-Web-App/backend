@@ -12,7 +12,7 @@ export class FlightService {
   }
 
   async findOneDomestic(index: number): Promise<domestic_flights> {
-    return this.prisma.domestic_flights.findUnique({ where: { index } });
+    return this.prisma.domestic_flights.findUnique({ where: { id: index } });
   }
 
   async createDomestic(flight: domestic_flights): Promise<domestic_flights> {
@@ -24,13 +24,13 @@ export class FlightService {
     flight: domestic_flights,
   ): Promise<domestic_flights> {
     return this.prisma.domestic_flights.update({
-      where: { index },
+      where: { id: index },
       data: flight,
     });
   }
 
   async deleteDomestic(index: number): Promise<domestic_flights> {
-    return this.prisma.domestic_flights.delete({ where: { index } });
+    return this.prisma.domestic_flights.delete({ where: { id: index } });
   }
 
   // International Flights
