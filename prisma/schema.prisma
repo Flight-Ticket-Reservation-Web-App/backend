@@ -1,66 +1,15 @@
-generator client {
-  provider = "prisma-client-js"
-}
+model website_content {
+  url         String   @id @db.VarChar(2048)
+  content     String   @db.Text
+  keywords    String   @db.VarChar(1000)
+  categories  String   @db.VarChar(500)
+  created_at  DateTime @default(now())
+  
+  // Full text search vector
+  search_vector Unsupported("tsvector")?
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model airports {
-  city    String
-  airport String
-  code    String @id(map: "PK_06be6c7681ff18455fd7fd7c45d")
-  country String
-}
-
-model domestic_flights {
-  origin          String
-  destination     String
-  flight_no       String
-  airline_code    String
-  airline         String
-  depart_time     DateTime @db.Time(6)
-  depart_weekday  Int
-  duration        Int
-  arrival_time    DateTime @db.Time(6)
-  arrival_weekday Int
-  economy_fare    Decimal  @db.Decimal(10, 2)
-  business_fare   Decimal  @db.Decimal(10, 2)
-  first_fare      Decimal  @db.Decimal(10, 2)
-  id              Int      @id(map: "PK_59bfb67131598b2636f801d47bb") @default(autoincrement())
-}
-
-model international_flights {
-  origin          String
-  destination     String
-  flight_no       String
-  airline_code    String
-  airline         String
-  index           Int      @id(map: "PK_e5243c5e47f4a5d34145a59f647") @default(autoincrement())
-  depart_time     DateTime @db.Time(6)
-  depart_weekday  Int
-  duration        Int
-  arrival_time    DateTime @db.Time(6)
-  arrival_weekday Int
-  economy_fare    Decimal  @db.Decimal(10, 2)
-  business_fare   Decimal  @db.Decimal(10, 2)
-  first_fare      Decimal  @db.Decimal(10, 2)
-}
-
-model user {
-  id          Int     @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
-  email       String  @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
-  password    String  @db.VarChar
-  firstName   String  @db.VarChar
-  lastName    String  @db.VarChar
-  isActive    Boolean @default(false)
-  role        Role    @default(USER)
-  codeId      String  @db.VarChar
-  codeExpired String  @db.VarChar
-}
-
-enum Role {
-  USER
-  ADMIN
+  // Indexes
+  @@index([keywords])
+  @@index([categories])
+  @@index([search_vector], type: Gin)
 }
