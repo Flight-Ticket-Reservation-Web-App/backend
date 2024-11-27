@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { AirportService } from './airport.service';
 import { CreateAirportDto } from './dto/create-airport.dto';
 import { UpdateAirportDto } from './dto/update-airport.dto';
@@ -17,18 +25,21 @@ export class AirportController {
     return this.airportService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.airportService.findOne(+id);
+  @Get(':code')
+  findOne(@Param('code') code: string) {
+    return this.airportService.findOne(code);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAirportDto: UpdateAirportDto) {
-    return this.airportService.update(+id, updateAirportDto);
+  @Patch(':code')
+  update(
+    @Param('code') code: string,
+    @Body() updateAirportDto: UpdateAirportDto,
+  ) {
+    return this.airportService.update(code, updateAirportDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.airportService.remove(+id);
+  @Delete(':code')
+  remove(@Param('code') code: string) {
+    return this.airportService.remove(code);
   }
 }

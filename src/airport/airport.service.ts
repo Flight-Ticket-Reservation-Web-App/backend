@@ -1,26 +1,38 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma.service';
 import { CreateAirportDto } from './dto/create-airport.dto';
 import { UpdateAirportDto } from './dto/update-airport.dto';
 
 @Injectable()
 export class AirportService {
-  create(createAirportDto: CreateAirportDto) {
-    return 'This action adds a new airport';
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(createAirportDto: CreateAirportDto) {
+    return await this.prisma.airports.create({
+      data: createAirportDto,
+    });
   }
 
-  findAll() {
-    return `This action returns all airport`;
+  async findAll() {
+    return await this.prisma.airports.findMany();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} airport`;
+  async findOne(code: string) {
+    return await this.prisma.airports.findUnique({
+      where: { code },
+    });
   }
 
-  update(id: number, updateAirportDto: UpdateAirportDto) {
-    return `This action updates a #${id} airport`;
+  async update(code: string, updateAirportDto: UpdateAirportDto) {
+    return await this.prisma.airports.update({
+      where: { code },
+      data: updateAirportDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} airport`;
+  async remove(code: string) {
+    return await this.prisma.airports.delete({
+      where: { code },
+    });
   }
 }
