@@ -26,6 +26,9 @@ model domestic_flights {
   duration        Int
   arrival_time    DateTime @db.Time(6)
   arrival_weekday Int
+  economy_seats   Int      @default(180)
+  business_seats  Int      @default(30)
+  first_seats     Int      @default(10)
   economy_fare    Decimal  @db.Decimal(10, 2)
   business_fare   Decimal  @db.Decimal(10, 2)
   first_fare      Decimal  @db.Decimal(10, 2)
@@ -43,6 +46,9 @@ model international_flights {
   duration        Int
   arrival_time    DateTime @db.Time(6)
   arrival_weekday Int
+  economy_seats   Int      @default(180)
+  business_seats  Int      @default(30)
+  first_seats     Int      @default(10)
   economy_fare    Decimal  @db.Decimal(10, 2)
   business_fare   Decimal  @db.Decimal(10, 2)
   first_fare      Decimal  @db.Decimal(10, 2)

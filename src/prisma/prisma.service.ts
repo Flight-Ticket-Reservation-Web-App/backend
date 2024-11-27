@@ -13,4 +13,8 @@ export class PrismaService
   async onModuleDestroy() {
     await this.$disconnect();
   }
+
+  async executeRaw(query: string, params?: any[]) {
+    return this.$executeRawUnsafe(query, ...params);
+  }
 }
