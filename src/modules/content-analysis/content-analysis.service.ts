@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import Groq from 'groq-sdk';
-import { Redis } from 'nestjs-redis';
+import Redis from 'ioredis';
 import { CategoryAnalysisDto } from './dto/category-analysis.dto';
 
 @Injectable()
