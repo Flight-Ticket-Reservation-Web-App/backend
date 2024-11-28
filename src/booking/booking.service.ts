@@ -19,7 +19,7 @@ export class BookingService {
       passengers,
     } = createBookingDto;
 
-    // Validate flight exists and has enough seats
+    // Validate flights and get their details
     const outboundFlight = await this.validateAndGetFlight(outboundFlightId);
     let returnFlight;
 
@@ -30,6 +30,12 @@ export class BookingService {
       returnFlight = await this.validateAndGetFlight(returnFlightId);
     }
 
+    // Validate seat availability
+    await this.validateSeatAvailability(outboundFlight, cabinClass, passengers.length);
+    if (returnFlight) {
+      await this.validateSeatAvailability(returnFlight, cabinClass, passengers.length);
+    }
+
     // Calculate total price
     const totalPrice = this.calculateTotalPrice(
       outboundFlight,
@@ -38,9 +44,7 @@ export class BookingService {
       passengers,
     );
 
-    // Start transaction
     return this.prisma.$transaction(async (prisma) => {
-      // Create booking
       const booking = await prisma.bookings.create({
         data: {
           user_id: userId,
@@ -52,8 +56,8 @@ export class BookingService {
           booking_flights: {
             create: [
               {
-                flight_type: 'DOMESTIC',
-                flight_id: parseInt(outboundFlightId),
+                flight_type: outboundFlight.type,
+                flight_id: outboundFlightId,
                 flight_direction: 'OUTBOUND',
                 flight_date: outboundFlight.depart_time,
                 fare_amount: this.getFareAmount(outboundFlight, cabinClass),
@@ -61,8 +65,8 @@ export class BookingService {
               ...(returnFlight
                 ? [
                     {
-                      flight_type: 'DOMESTIC',
-                      flight_id: parseInt(returnFlightId),
+                      flight_type: returnFlight.type,
+                      flight_id: returnFlightId,
                       flight_direction: 'RETURN',
                       flight_date: returnFlight.depart_time,
                       fare_amount: this.getFareAmount(returnFlight, cabinClass),
@@ -77,7 +81,7 @@ export class BookingService {
               last_name: p.lastName,
               type: p.type,
               gender: p.gender,
-              dob: new Date(p.dob), // Convert to Date object
+              dob: new Date(p.dob),
               passport_number: p.passportNumber,
               passport_expiry: p.passportExpiry
                 ? new Date(p.passportExpiry)
@@ -92,7 +96,6 @@ export class BookingService {
         },
       });
 
-      // Update flight seats
       await this.updateFlightSeats(
         prisma,
         outboundFlightId,
@@ -106,15 +109,57 @@ export class BookingService {
   }
 
   private async validateAndGetFlight(flightId: string) {
-    const flight = await this.prisma.domestic_flights.findUnique({
-      where: { id: parseInt(flightId) },
-    });
+    const prefix = flightId.charAt(0).toUpperCase();
+    const numericId = flightId.slice(1);
 
-    if (!flight) {
-      throw new BadRequestException(`Flight ${flightId} not found`);
+    if (prefix === 'D') {
+      // Search domestic flights
+      const domesticFlight = await this.prisma.domestic_flights.findUnique({
+        where: { id: `D${numericId}` },
+      });
+
+      if (domesticFlight) {
+        return { ...domesticFlight, type: 'DOMESTIC' };
+      }
+    } else if (prefix === 'I') {
+      // Search international flights
+      const internationalFlight =
+        await this.prisma.international_flights.findUnique({
+          where: { id: `I${numericId}` },
+        });
+
+      if (internationalFlight) {
+        return { ...internationalFlight, type: 'INTERNATIONAL' };
+      }
     }
 
-    return flight;
+    throw new BadRequestException(`Flight ${flightId} not found`);
+  }
+
+  private async validateSeatAvailability(
+    flight: any,
+    cabinClass: CabinClass,
+    passengerCount: number,
+  ) {
+    let availableSeats: number;
+
+    switch (cabinClass) {
+      case CabinClass.ECONOMY:
+        availableSeats = flight.available_economy_seats;
+        break;
+      case CabinClass.BUSINESS:
+        availableSeats = flight.available_business_seats;
+        break;
+      case CabinClass.FIRST:
+        availableSeats = flight.available_first_seats;
+        break;
+    }
+
+    if (availableSeats < passengerCount) {
+      throw new BadRequestException(
+        `Not enough ${cabinClass.toLowerCase()} seats available on flight ${flight.id}. Available: ${availableSeats}, Requested: ${passengerCount}`,
+      );
+    }
   }
 
   private calculateTotalPrice(
@@ -156,16 +201,26 @@ export class BookingService {
   ) {
     const seatField = this.getSeatField(cabinClass);
 
-    await prisma.domestic_flights.update({
-      where: { id: parseInt(outboundFlightId) },
-      data: { [seatField]: { decrement: passengerCount } },
-    });
+    const updateSeats = async (flightId: string) => {
+      const prefix = flightId.charAt(0).toUpperCase();
+      const numericId = flightId.slice(1);
 
+      if (prefix === 'D') {
+        await prisma.domestic_flights.update({
+          where: { id: `D${numericId}` },
+          data: { [seatField]: { decrement: passengerCount } },
+        });
+      } else if (prefix === 'I') {
+        await prisma.international_flights.update({
+          where: { id: `I${numericId}` },
+          data: { [seatField]: { decrement: passengerCount } },
+        });
+      }
+    };
+
+    await updateSeats(outboundFlightId);
     if (returnFlightId) {
-      await prisma.domestic_flights.update({
-        where: { id: parseInt(returnFlightId) },
-        data: { [seatField]: { decrement: passengerCount } },
-      });
+      await updateSeats(returnFlightId);
     }
   }
 
