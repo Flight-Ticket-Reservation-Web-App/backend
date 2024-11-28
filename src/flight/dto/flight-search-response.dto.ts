@@ -1,5 +1,5 @@
 export interface FlightSearchResponseDto {
-  index: number;
+  index: string;
   origin: string;
   destination: string;
   departTime: string;    // Changed from Date to string

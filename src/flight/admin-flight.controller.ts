@@ -23,7 +23,7 @@ export class AdminFlightController {
   }
 
   @Get('domestic/:id')
-  findOneDomestic(@Param('id') id: number): Promise<domestic_flights> {
+  findOneDomestic(@Param('id') id: string): Promise<domestic_flights> {
     return this.flightService.findOneDomestic(id);
   }
 
@@ -34,14 +34,14 @@ export class AdminFlightController {
 
   @Put('domestic/:id')
   updateDomestic(
-    @Param('id') id: number,
+    @Param('id') id: string,
     @Body() flight: domestic_flights,
   ): Promise<domestic_flights> {
     return this.flightService.updateDomestic(id, flight);
   }
 
   @Delete('domestic/:id')
-  deleteDomestic(@Param('id') id: number): Promise<domestic_flights> {
+  deleteDomestic(@Param('id') id: string): Promise<domestic_flights> {
     return this.flightService.deleteDomestic(id);
   }
 
@@ -51,11 +51,11 @@ export class AdminFlightController {
     return this.flightService.findAllInternational();
   }
 
-  @Get('international/:index')
+  @Get('international/:id')
   findOneInternational(
-    @Param('index') index: number,
+    @Param('id') id: string,
   ): Promise<international_flights> {
-    return this.flightService.findOneInternational(index);
+    return this.flightService.findOneInternational(id);
   }
 
   @Post('international')
@@ -65,18 +65,18 @@ export class AdminFlightController {
     return this.flightService.createInternational(flight);
   }
 
-  @Put('international/:index')
+  @Put('international/:id')
   updateInternational(
-    @Param('index') index: number,
+    @Param('id') id: string,
     @Body() flight: international_flights,
   ): Promise<international_flights> {
-    return this.flightService.updateInternational(index, flight);
+    return this.flightService.updateInternational(id, flight);
   }
 
-  @Delete('international/:index')
+  @Delete('international/:id')
   deleteInternational(
-    @Param('index') index: number,
+    @Param('id') id: string,
   ): Promise<international_flights> {
-    return this.flightService.deleteInternational(index);
+    return this.flightService.deleteInternational(id);
   }
 }

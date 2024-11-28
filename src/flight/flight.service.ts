@@ -13,7 +13,7 @@ export class FlightService {
     return this.prisma.domestic_flights.findMany();
   }
 
-  async findOneDomestic(id: number): Promise<domestic_flights> {
+  async findOneDomestic(id: string): Promise<domestic_flights> {
     return this.prisma.domestic_flights.findUnique({ where: { id } });
   }
 
@@ -22,7 +22,7 @@ export class FlightService {
   }
 
   async updateDomestic(
-    id: number,
+    id: string,
     flight: domestic_flights,
   ): Promise<domestic_flights> {
     return this.prisma.domestic_flights.update({
@@ -31,7 +31,7 @@ export class FlightService {
     });
   }
 
-  async deleteDomestic(id: number): Promise<domestic_flights> {
+  async deleteDomestic(id: string): Promise<domestic_flights> {
     return this.prisma.domestic_flights.delete({ where: { id } });
   }
 
@@ -40,8 +40,8 @@ export class FlightService {
     return this.prisma.international_flights.findMany();
   }
 
-  async findOneInternational(index: number): Promise<international_flights> {
-    return this.prisma.international_flights.findUnique({ where: { index } });
+  async findOneInternational(id: string): Promise<international_flights> {
+    return this.prisma.international_flights.findUnique({ where: { id } });
   }
 
   async createInternational(
@@ -51,17 +51,17 @@ export class FlightService {
   }
 
   async updateInternational(
-    index: number,
+    id: string,
     flight: international_flights,
   ): Promise<international_flights> {
     return this.prisma.international_flights.update({
-      where: { index },
+      where: { id },
       data: flight,
     });
   }
 
-  async deleteInternational(index: number): Promise<international_flights> {
-    return this.prisma.international_flights.delete({ where: { index } });
+  async deleteInternational(id: string): Promise<international_flights> {
+    return this.prisma.international_flights.delete({ where: { id } });
   }
 
   async searchFlights(searchParams: SearchFlightDto): Promise<{
@@ -145,13 +145,16 @@ export class FlightService {
       this.prisma.international_flights.findMany({
         where: {
           origin,
-          destination,
+          destination, 
           depart_weekday: weekday,
         },
       }),
     ]);
 
-    const allFlights = [...domesticFlights, ...internationalFlights];
+    const allFlights = [
+      ...domesticFlights.map(f => ({...f, type: 'DOMESTIC'})),
+      ...internationalFlights.map(f => ({...f, type: 'INTERNATIONAL'}))
+    ];
 
     return allFlights
       .map((flight) => {
@@ -177,10 +180,7 @@ export class FlightService {
           return null;
         }
 
-        const departDateTime = this.combineDateAndTime(
-          date,
-          flight.depart_time,
-        );
+        const departDateTime = this.combineDateAndTime(date, flight.depart_time);
         const arrivalDateTime = this.calculateArrivalDate(
           departDateTime,
           flight.duration,
@@ -188,7 +188,7 @@ export class FlightService {
         );
 
         return {
-          index: 'id' in flight ? flight.id : flight.index,
+          index: flight.id,
           origin: flight.origin,
           destination: flight.destination,
           departTime: this.formatTimeOnly(departDateTime),
