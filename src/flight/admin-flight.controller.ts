@@ -8,8 +8,7 @@ import {
   Param,
 } from '@nestjs/common';
 import { FlightService } from './flight.service';
-import { DomesticFlight } from './entities/domestic-flights.entity';
-import { InternationalFlight } from './entities/international-flights.entity';
+import { domestic_flights, international_flights } from '@prisma/client';
 import { Role } from 'src/role/role.decorator';
 
 @Role('admin')
@@ -19,63 +18,65 @@ export class AdminFlightController {
 
   // Domestic Flights
   @Get('domestic')
-  findAllDomestic(): Promise<DomesticFlight[]> {
+  findAllDomestic(): Promise<domestic_flights[]> {
     return this.flightService.findAllDomestic();
   }
 
   @Get('domestic/:id')
-  findOneDomestic(@Param('id') id: number): Promise<DomesticFlight> {
+  findOneDomestic(@Param('id') id: number): Promise<domestic_flights> {
     return this.flightService.findOneDomestic(id);
   }
 
   @Post('domestic')
-  createDomestic(@Body() flight: DomesticFlight): Promise<DomesticFlight> {
+  createDomestic(@Body() flight: domestic_flights): Promise<domestic_flights> {
     return this.flightService.createDomestic(flight);
   }
 
   @Put('domestic/:id')
   updateDomestic(
     @Param('id') id: number,
-    @Body() flight: DomesticFlight,
-  ): Promise<any> {
+    @Body() flight: domestic_flights,
+  ): Promise<domestic_flights> {
     return this.flightService.updateDomestic(id, flight);
   }
 
   @Delete('domestic/:id')
-  deleteDomestic(@Param('id') id: number): Promise<any> {
+  deleteDomestic(@Param('id') id: number): Promise<domestic_flights> {
     return this.flightService.deleteDomestic(id);
   }
 
   // International Flights
   @Get('international')
-  findAllInternational(): Promise<InternationalFlight[]> {
+  findAllInternational(): Promise<international_flights[]> {
     return this.flightService.findAllInternational();
   }
 
   @Get('international/:index')
   findOneInternational(
     @Param('index') index: number,
-  ): Promise<InternationalFlight> {
+  ): Promise<international_flights> {
     return this.flightService.findOneInternational(index);
   }
 
   @Post('international')
   createInternational(
-    @Body() flight: InternationalFlight,
-  ): Promise<InternationalFlight> {
+    @Body() flight: international_flights,
+  ): Promise<international_flights> {
     return this.flightService.createInternational(flight);
   }
 
   @Put('international/:index')
   updateInternational(
     @Param('index') index: number,
-    @Body() flight: InternationalFlight,
-  ): Promise<any> {
+    @Body() flight: international_flights,
+  ): Promise<international_flights> {
     return this.flightService.updateInternational(index, flight);
   }
 
   @Delete('international/:index')
-  deleteInternational(@Param('index') index: number): Promise<any> {
+  deleteInternational(
+    @Param('index') index: number,
+  ): Promise<international_flights> {
     return this.flightService.deleteInternational(index);
   }
 }

@@ -1,13 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
-import { domestic_flights, international_flights } from '@prisma/client';
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { PrismaService } from '../prisma/prisma.service';
 import { SearchFlightDto, TripType, CabinClass } from './dto/search-flight.dto';
 import { FlightSearchResponseDto } from './dto/flight-search-response.dto';
-import { DomesticFlight } from './entities/domestic-flights.entity';
-import { InternationalFlight } from './entities/international-flights.entity';
+import { domestic_flights, international_flights } from '@prisma/client';
 
 @Injectable()
 export class FlightService {
@@ -83,22 +78,23 @@ export class FlightService {
       tripType,
     } = searchParams;
 
-    // Validate dates for round trips
     if (tripType === TripType.ROUND_TRIP) {
-        if (!returnDate) {
-            throw new BadRequestException('Return date is required for round trips');
-        }
-        
-        // Convert dates to timestamps for comparison
-        const departTimestamp = new Date(departDate).getTime();
-        const returnTimestamp = new Date(returnDate).getTime();
-        
-        if (returnTimestamp <= departTimestamp) {
-            throw new BadRequestException('Return date must be after departure date');
-        }
+      if (!returnDate) {
+        throw new BadRequestException(
+          'Return date is required for round trips',
+        );
+      }
+
+      const departTimestamp = new Date(departDate).getTime();
+      const returnTimestamp = new Date(returnDate).getTime();
+
+      if (returnTimestamp <= departTimestamp) {
+        throw new BadRequestException(
+          'Return date must be after departure date',
+        );
+      }
     }
 
-    // Get outbound flights
     const outboundFlights = await this.searchOneWayFlights(
       origin,
       destination,
@@ -111,7 +107,6 @@ export class FlightService {
       return { outboundFlights };
     }
 
-    // Get return flights
     const returnFlights = await this.searchOneWayFlights(
       destination,
       origin,
@@ -123,6 +118,13 @@ export class FlightService {
     return { outboundFlights, returnFlights };
   }
 
+  private formatTimeOnly(date: Date): string {
+    const utcHours = date.getUTCHours();
+    const utcMinutes = date.getUTCMinutes();
+
+    return `${utcHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`;
+  }
+
   private async searchOneWayFlights(
     origin: string,
     destination: string,
@@ -132,16 +134,15 @@ export class FlightService {
   ): Promise<FlightSearchResponseDto[]> {
     const weekday = date.getDay();
 
-    // Search in both domestic and international repositories
     const [domesticFlights, internationalFlights] = await Promise.all([
-      this.domesticFlightRepository.find({
+      this.prisma.domestic_flights.findMany({
         where: {
           origin,
           destination,
           depart_weekday: weekday,
         },
       }),
-      this.internationalFlightRepository.find({
+      this.prisma.international_flights.findMany({
         where: {
           origin,
           destination,
@@ -152,58 +153,67 @@ export class FlightService {
 
     const allFlights = [...domesticFlights, ...internationalFlights];
 
-    return allFlights.map(flight => {
-      let availableSeats: number;
-      let fare: number;
+    return allFlights
+      .map((flight) => {
+        let availableSeats: number;
+        let fare: number;
 
-      switch (cabinClass) {
-        case CabinClass.ECONOMY:
-          availableSeats = flight.economy_seats;
-          fare = flight.economy_fare;
-          break;
-        case CabinClass.BUSINESS:
-          availableSeats = flight.business_seats;
-          fare = flight.business_fare;
-          break;
-        case CabinClass.FIRST:
-          availableSeats = flight.first_seats;
-          fare = flight.first_fare;
-          break;
-      }
+        switch (cabinClass) {
+          case CabinClass.ECONOMY:
+            availableSeats = flight.available_economy_seats;
+            fare = Number(flight.economy_fare);
+            break;
+          case CabinClass.BUSINESS:
+            availableSeats = flight.available_business_seats;
+            fare = Number(flight.business_fare);
+            break;
+          case CabinClass.FIRST:
+            availableSeats = flight.available_first_seats;
+            fare = Number(flight.first_fare);
+            break;
+        }
 
-      if (availableSeats < passengers) {
-        return null;
-      }
+        if (availableSeats < passengers) {
+          return null;
+        }
 
-      const departDateTime = this.combineDateAndTime(date, flight.depart_time);
-      const arrivalDateTime = this.calculateArrivalDate(
-        departDateTime,
-        flight.duration,
-        flight.arrival_weekday - flight.depart_weekday,
-      );
+        const departDateTime = this.combineDateAndTime(
+          date,
+          flight.depart_time,
+        );
+        const arrivalDateTime = this.calculateArrivalDate(
+          departDateTime,
+          flight.duration,
+          flight.arrival_weekday - flight.depart_weekday,
+        );
 
-      return {
-        index: this.isDomesticFlight(flight) ? flight.id : flight.index,
-        origin: flight.origin,
-        destination: flight.destination,
-        departTime: flight.depart_time,
-        departDate: departDateTime,
-        arrivalTime: flight.arrival_time,
-        arrivalDate: arrivalDateTime,
-        duration: flight.duration,
-        airline: flight.airline,
-        flightNo: flight.flight_no,
-        availableSeats,
-        fare: fare * passengers,
-      };
-    }).filter(flight => flight !== null);
+        return {
+          index: 'id' in flight ? flight.id : flight.index,
+          origin: flight.origin,
+          destination: flight.destination,
+          departTime: this.formatTimeOnly(departDateTime),
+          departDate: departDateTime.toISOString(),
+          arrivalTime: this.formatTimeOnly(arrivalDateTime),
+          arrivalDate: arrivalDateTime.toISOString(),
+          duration: flight.duration,
+          airline: flight.airline,
+          flightNo: flight.flight_no,
+          availableSeats,
+          fare: fare * passengers,
+        } as FlightSearchResponseDto;
+      })
+      .filter((flight): flight is FlightSearchResponseDto => flight !== null);
   }
 
-  private combineDateAndTime(date: Date, time: string): Date {
-    const [hours, minutes] = time.split(':');
+  private combineDateAndTime(date: Date, time: Date): Date {
+    // Create new date object from search date
     const combined = new Date(date);
-    combined.setHours(parseInt(hours, 10));
-    combined.setMinutes(parseInt(minutes, 10));
+    // Set time components
+    combined.setUTCHours(time.getUTCHours());
+    combined.setUTCHours(time.getUTCHours());
+    combined.setUTCMinutes(time.getUTCHours());
+    combined.setUTCSeconds(0);
+    combined.setUTCMilliseconds(0);
     return combined;
   }
 
@@ -212,14 +222,19 @@ export class FlightService {
     duration: number,
     daysDiff: number,
   ): Date {
+    // Create new date object to avoid modifying original
     const arrivalDate = new Date(departDate);
-    arrivalDate.setMinutes(arrivalDate.getMinutes() + duration);
-    arrivalDate.setDate(arrivalDate.getDate() + daysDiff);
-    return arrivalDate;
-  }
 
-  // Add this helper function in flight.service.ts
-  private isDomesticFlight(flight: DomesticFlight | InternationalFlight): flight is DomesticFlight {
-    return 'id' in flight;
+    // Add duration in minutes
+    arrivalDate.setMinutes(arrivalDate.getMinutes() + duration);
+
+    // Only add days difference if the arrival time hasn't already crossed to next day
+    // Check if adding duration already pushed us to next day
+    const crossedMidnight = arrivalDate.getDate() !== departDate.getDate();
+    if (!crossedMidnight && daysDiff > 0) {
+      arrivalDate.setDate(arrivalDate.getDate() + daysDiff);
+    }
+
+    return arrivalDate;
   }
 }

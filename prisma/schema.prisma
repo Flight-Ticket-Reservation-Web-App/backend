@@ -15,50 +15,99 @@ model airports {
 }
 
 model domestic_flights {
-  origin          String
-  destination     String
-  flight_no       String
-  airline_code    String
-  airline         String
-  id              Int      @id(map: "PK_59bfb67131598b2636f801d47bb") @default(autoincrement())
-  depart_time     DateTime @db.Time(6)
-  depart_weekday  Int
-  duration        Int
-  arrival_time    DateTime @db.Time(6)
-  arrival_weekday Int
-  economy_seats   Int      @default(180)
-  business_seats  Int      @default(30)
-  first_seats     Int      @default(10)
-  economy_fare    Decimal  @db.Decimal(10, 2)
-  business_fare   Decimal  @db.Decimal(10, 2)
-  first_fare      Decimal  @db.Decimal(10, 2)
+  origin                   String
+  destination              String
+  flight_no                String
+  airline_code             String
+  airline                  String
+  depart_time              DateTime @db.Time(6)
+  depart_weekday           Int
+  duration                 Int
+  arrival_time             DateTime @db.Time(6)
+  arrival_weekday          Int
+  economy_fare             Decimal  @db.Decimal(10, 2)
+  business_fare            Decimal  @db.Decimal(10, 2)
+  first_fare               Decimal  @db.Decimal(10, 2)
+  id                       Int      @id(map: "PK_59bfb67131598b2636f801d47bb") @default(autoincrement())
+  economy_seats            Int
+  business_seats           Int
+  first_seats              Int
+  available_economy_seats  Int?     @default(150)
+  available_business_seats Int?     @default(30)
+  available_first_seats    Int?     @default(10)
 }
 
 model international_flights {
-  origin          String
-  destination     String
-  flight_no       String
-  airline_code    String
-  airline         String
-  index           Int      @id(map: "PK_e5243c5e47f4a5d34145a59f647") @default(autoincrement())
-  depart_time     DateTime @db.Time(6)
-  depart_weekday  Int
-  duration        Int
-  arrival_time    DateTime @db.Time(6)
-  arrival_weekday Int
-  economy_seats   Int      @default(180)
-  business_seats  Int      @default(30)
-  first_seats     Int      @default(10)
-  economy_fare    Decimal  @db.Decimal(10, 2)
-  business_fare   Decimal  @db.Decimal(10, 2)
-  first_fare      Decimal  @db.Decimal(10, 2)
+  origin                   String
+  destination              String
+  flight_no                String
+  airline_code             String
+  airline                  String
+  index                    Int      @id(map: "PK_e5243c5e47f4a5d34145a59f647") @default(autoincrement())
+  depart_time              DateTime @db.Time(6)
+  depart_weekday           Int
+  duration                 Int
+  arrival_time             DateTime @db.Time(6)
+  arrival_weekday          Int
+  economy_fare             Decimal  @db.Decimal(10, 2)
+  business_fare            Decimal  @db.Decimal(10, 2)
+  first_fare               Decimal  @db.Decimal(10, 2)
+  economy_seats            Int
+  business_seats           Int
+  first_seats              Int
+  available_economy_seats  Int?     @default(150)
+  available_business_seats Int?     @default(30)
+  available_first_seats    Int?     @default(10)
 }
 
 model user {
-  id        Int     @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
-  email     String  @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
-  password  String  @db.VarChar
-  firstName String? @db.VarChar
-  lastName  String? @db.VarChar
-  role      String  @default("user") @db.VarChar
+  id        Int        @id @default(autoincrement())
+  email     String     @unique @db.VarChar
+  password  String     @db.VarChar
+  firstname String     @db.VarChar
+  lastname  String     @db.VarChar
+  role      String     @default("user") @db.VarChar
+  bookings  bookings[]
+}
+
+model bookings {
+  id                 Int                  @id @default(autoincrement())
+  user_id            Int?
+  booking_number     String               @unique @db.VarChar
+  total_amount       Decimal              @db.Decimal(10, 2)
+  trip_type          String               @db.VarChar
+  cabin_class        String               @db.VarChar
+  status             String               @db.VarChar
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?            @default(now()) @updatedAt @db.Timestamp(6)
+  booking_flights    booking_flights[]
+  booking_passengers booking_passengers[]
+  user               user?                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model booking_flights {
+  id               Int       @id @default(autoincrement())
+  booking_id       Int?
+  flight_type      String    @db.VarChar
+  flight_id        Int
+  flight_direction String    @db.VarChar
+  flight_date      DateTime  @db.Timestamp(6)
+  fare_amount      Decimal   @db.Decimal(10, 2)
+  booking          bookings? @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([booking_id, flight_direction], map: "unique_booking_flight_direction")
+}
+
+model booking_passengers {
+  id              Int       @id @default(autoincrement())
+  booking_id      Int?
+  first_name      String    @db.VarChar
+  last_name       String    @db.VarChar
+  type            String    @db.VarChar
+  gender          String    @db.VarChar
+  dob             DateTime  @db.Date
+  passport_number String?   @db.VarChar
+  passport_expiry DateTime? @db.Date
+  nationality     String?   @db.VarChar
+  booking         bookings? @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }

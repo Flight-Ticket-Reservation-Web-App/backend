@@ -1,11 +1,11 @@
-export class FlightSearchResponseDto {
+export interface FlightSearchResponseDto {
   index: number;
   origin: string;
   destination: string;
-  departTime: string;
-  departDate: Date;
-  arrivalTime: string;
-  arrivalDate: Date;
+  departTime: string;    // Changed from Date to string
+  departDate: string;    // Changed from Date to string
+  arrivalTime: string;   // Changed from Date to string
+  arrivalDate: string;   // Changed from Date to string
   duration: number;
   airline: string;
   flightNo: string;
