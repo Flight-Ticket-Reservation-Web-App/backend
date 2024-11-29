@@ -20,20 +20,28 @@ export class BookingService {
     } = createBookingDto;
 
     // Validate flights and get their details
-    const outboundFlight = await this.validateAndGetFlight(outboundFlightId);
+    const outboundFlight = await this.validateAndGetFlight(outboundFlightId, cabinClass);
     let returnFlight;
 
     if (tripType === TripType.ROUND_TRIP) {
       if (!returnFlightId) {
         throw new BadRequestException('Return flight required for round trip');
       }
-      returnFlight = await this.validateAndGetFlight(returnFlightId);
+      returnFlight = await this.validateAndGetFlight(returnFlightId, cabinClass);
     }
 
     // Validate seat availability
-    await this.validateSeatAvailability(outboundFlight, cabinClass, passengers.length);
+    await this.validateSeatAvailability(
+      outboundFlight,
+      cabinClass,
+      passengers.length,
+    );
     if (returnFlight) {
-      await this.validateSeatAvailability(returnFlight, cabinClass, passengers.length);
+      await this.validateSeatAvailability(
+        returnFlight,
+        cabinClass,
+        passengers.length,
+      );
     }
 
     // Calculate total price
@@ -59,7 +67,10 @@ export class BookingService {
                 flight_type: outboundFlight.type,
                 flight_id: outboundFlightId,
                 flight_direction: 'OUTBOUND',
-                flight_date: outboundFlight.depart_time,
+                flight_date: this.combineDateAndTime(
+                  createBookingDto.departDate,
+                  outboundFlight.depart_time,
+                ),
                 fare_amount: this.getFareAmount(outboundFlight, cabinClass),
               },
               ...(returnFlight
@@ -68,7 +79,10 @@ export class BookingService {
                       flight_type: returnFlight.type,
                       flight_id: returnFlightId,
                       flight_direction: 'RETURN',
-                      flight_date: returnFlight.depart_time,
+                      flight_date: this.combineDateAndTime(
+                        createBookingDto.returnDate,
+                        returnFlight.depart_time,
+                      ),
                       fare_amount: this.getFareAmount(returnFlight, cabinClass),
                     },
                   ]
@@ -108,32 +122,45 @@ export class BookingService {
     });
   }
 
-  private async validateAndGetFlight(flightId: string) {
+  private async validateAndGetFlight(flightId: string, cabinClass: CabinClass) {
     const prefix = flightId.charAt(0).toUpperCase();
     const numericId = flightId.slice(1);
 
+    let flight;
+
     if (prefix === 'D') {
       // Search domestic flights
-      const domesticFlight = await this.prisma.domestic_flights.findUnique({
+      flight = await this.prisma.domestic_flights.findUnique({
         where: { id: `D${numericId}` },
       });
 
-      if (domesticFlight) {
-        return { ...domesticFlight, type: 'DOMESTIC' };
+      if (flight) {
+        flight = { ...flight, type: 'DOMESTIC' };
       }
     } else if (prefix === 'I') {
       // Search international flights
-      const internationalFlight =
-        await this.prisma.international_flights.findUnique({
-          where: { id: `I${numericId}` },
-        });
+      flight = await this.prisma.international_flights.findUnique({
+        where: { id: `I${numericId}` },
+      });
 
-      if (internationalFlight) {
-        return { ...internationalFlight, type: 'INTERNATIONAL' };
+      if (flight) {
+        flight = { ...flight, type: 'INTERNATIONAL' };
       }
     }
 
-    throw new BadRequestException(`Flight ${flightId} not found`);
+    if (!flight) {
+      throw new BadRequestException(`Flight ${flightId} not found`);
+    }
+
+    // Validate if the cabin class is available for this flight
+    const fare = this.getFareAmount(flight, cabinClass);
+    if (fare === 0) {
+      throw new BadRequestException(
+        `${cabinClass} class is not available for flight ${flightId}`
+      );
+    }
+
+    return flight;
   }
 
   private async validateSeatAvailability(
@@ -233,5 +260,41 @@ export class BookingService {
       case CabinClass.FIRST:
         return 'available_first_seats';
     }
+  }
+
+  private combineDateAndTime(date: Date, time: Date): Date {
+    console.log('Raw inputs:', { date, time });
+
+    // Ensure date is valid
+    const bookingDate = new Date(date);
+    if (isNaN(bookingDate.getTime())) {
+      throw new BadRequestException(`Invalid booking date: ${date}`);
+    }
+
+    // Handle flight time which comes from db as Time(6)
+    let flightTime: Date;
+    if (typeof time === 'string') {
+      flightTime = new Date(`1970-01-01T${time}`);
+    } else {
+      flightTime = new Date(time);
+    }
+
+    if (isNaN(flightTime.getTime())) {
+      throw new BadRequestException(`Invalid flight time: ${time}`);
+    }
+
+    console.log('Parsed dates:', {
+      bookingDate: bookingDate.toISOString(),
+      flightTime: flightTime.toISOString(),
+    });
+
+    // Combine date and time
+    const combined = new Date(bookingDate);
+    combined.setUTCHours(flightTime.getUTCHours());
+    combined.setUTCMinutes(flightTime.getUTCMinutes());
+    combined.setUTCSeconds(0);
+    combined.setUTCMilliseconds(0);
+
+    return combined;
   }
 }

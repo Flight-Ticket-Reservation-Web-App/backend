@@ -176,6 +176,11 @@ export class FlightService {
             break;
         }
 
+        // Check if fare is 0 (cabin class not available)
+        if (fare === 0) {
+          return null;
+        }
+
         if (availableSeats < passengers) {
           return null;
         }
