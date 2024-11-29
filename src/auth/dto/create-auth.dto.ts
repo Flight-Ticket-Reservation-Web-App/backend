@@ -15,3 +15,11 @@ export class CreateAuthDto {
 
   //TODO: Add title, DOB, Nationality, phone (+code)
 }
+
+export class CodeAuthDto {
+  @IsNotEmpty()
+  id: number;
+
+  @IsNotEmpty()
+  code: string;
+}

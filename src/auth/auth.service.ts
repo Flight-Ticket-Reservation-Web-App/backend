@@ -2,8 +2,8 @@ import { UserService } from '@/modules/user/user.service';
 import { comparePasswordHelper } from '@/utils/helper';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { access } from 'fs';
+import { CodeAuthDto, CreateAuthDto } from './dto/create-auth.dto';
+import { UpdateAuthDto } from './dto/update-auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +19,7 @@ export class AuthService {
     }
     const isValidPassword = await comparePasswordHelper(pass, user.password);
     if (isValidPassword) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
       return result;
     }
@@ -50,5 +51,12 @@ export class AuthService {
 
   handleRegister = async (registerDto: CreateAuthDto) => {
     return await this.usersService.handleRegister(registerDto);
+  };
+
+  checkCode = async (data: CodeAuthDto) => {
+    return await this.usersService.handleActivate(data);
+  };
+  reactivate = async (data: UpdateAuthDto) => {
+    return await this.usersService.handleReactivate(data);
   };
 }
