@@ -6,8 +6,8 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { FlightService } from './flight.service';
-import { SearchFlightDto } from './dto/search-flight.dto';
+import { FlightService } from '@/modules/flight/flight.service';
+import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';
 
 @Controller('flights')
 export class FlightController {

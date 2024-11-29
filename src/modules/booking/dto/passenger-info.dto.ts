@@ -1,4 +1,3 @@
-// src/booking/dto/passenger-info.dto.ts
 import { IsString, IsEnum, IsDate, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 

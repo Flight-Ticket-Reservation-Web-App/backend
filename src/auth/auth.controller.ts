@@ -10,9 +10,9 @@ import {
 import { AuthService } from '@/auth/auth.service';
 import { LocalAuthGuard } from '@/auth/passport/local-auth.guard';
 import { Public } from '@/decorator/public-decorator';
-import { CodeAuthDto, CreateAuthDto } from './dto/create-auth.dto';
+import { CodeAuthDto, CreateAuthDto } from '@/auth/dto/create-auth.dto';
 import { MailerService } from '@nestjs-modules/mailer';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { UpdateAuthDto } from '@/auth/dto/update-auth.dto';
 
 @Controller('auth')
 export class AuthController {

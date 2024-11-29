@@ -1,7 +1,11 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { SearchFlightDto, TripType, CabinClass } from './dto/search-flight.dto';
-import { FlightSearchResponseDto } from './dto/flight-search-response.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import {
+  SearchFlightDto,
+  TripType,
+  CabinClass,
+} from '@/modules/flight/dto/search-flight.dto';
+import { FlightSearchResponseDto } from '@/modules/flight/dto/flight-search-response.dto';
 import { domestic_flights, international_flights } from '@prisma/client';
 
 @Injectable()
@@ -26,7 +30,7 @@ export class FlightService {
     flight: domestic_flights,
   ): Promise<domestic_flights> {
     return this.prisma.domestic_flights.update({
-      where: { id: index },
+      where: { id },
       data: flight,
     });
   }

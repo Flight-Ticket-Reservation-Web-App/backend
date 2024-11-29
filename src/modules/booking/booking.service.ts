@@ -1,9 +1,8 @@
-// src/booking/booking.service.ts
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateBookingDto } from './dto/create-booking.dto';
-import { PassengerType } from './dto/passenger-info.dto';
-import { TripType, CabinClass } from '../flight/dto/search-flight.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { CreateBookingDto } from '@/modules/booking/dto/create-booking.dto';
+import { PassengerType } from '@/modules/booking/dto/passenger-info.dto';
+import { TripType, CabinClass } from '@/modules/flight/dto/search-flight.dto';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -20,14 +19,20 @@ export class BookingService {
     } = createBookingDto;
 
     // Validate flights and get their details
-    const outboundFlight = await this.validateAndGetFlight(outboundFlightId, cabinClass);
+    const outboundFlight = await this.validateAndGetFlight(
+      outboundFlightId,
+      cabinClass,
+    );
     let returnFlight;
 
     if (tripType === TripType.ROUND_TRIP) {
       if (!returnFlightId) {
         throw new BadRequestException('Return flight required for round trip');
       }
-      returnFlight = await this.validateAndGetFlight(returnFlightId, cabinClass);
+      returnFlight = await this.validateAndGetFlight(
+        returnFlightId,
+        cabinClass,
+      );
     }
 
     // Validate seat availability
@@ -156,7 +161,7 @@ export class BookingService {
     const fare = this.getFareAmount(flight, cabinClass);
     if (fare === 0) {
       throw new BadRequestException(
-        `${cabinClass} class is not available for flight ${flightId}`
+        `${cabinClass} class is not available for flight ${flightId}`,
       );
     }
 

@@ -1,4 +1,3 @@
-// src/booking/booking.controller.ts
 import {
   Controller,
   Post,
@@ -8,15 +7,18 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { BookingService } from './booking.service';
-import { CreateBookingDto } from './dto/create-booking.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { BookingService } from '@/modules/booking/booking.service';
+import { CreateBookingDto } from '@/modules/booking/dto/create-booking.dto';
+import { JwtAuthGuard } from '@/auth/passport/jwt-auth.guard';
+import { Role } from '@/modules/role/role.decorator';
+import { RoleGuard } from '@/modules/role/role.guard';
 
 @Controller('bookings')
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @Role('user')
+  @UseGuards(JwtAuthGuard, RoleGuard)
   @HttpCode(HttpStatus.OK)
   @Post()
   async create(@Request() req, @Body() createBookingDto: CreateBookingDto) {
