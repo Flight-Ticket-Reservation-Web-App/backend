@@ -74,9 +74,7 @@ export class AdminFlightController {
   }
 
   @Delete('international/:id')
-  deleteInternational(
-    @Param('id') id: string,
-  ): Promise<international_flights> {
+  deleteInternational(@Param('id') id: string): Promise<international_flights> {
     return this.flightService.deleteInternational(id);
   }
 }

@@ -11,7 +11,7 @@ services:
     container_name: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts/email.sql:/docker-entrypoint-initdb.d/email.sql # this is the path to the sql file
+      - ./init-scripts/dump2.sql:/docker-entrypoint-initdb.d/dump2.sql # this is the path to the sql file
     ports:
       - '5432:5432'
     networks:

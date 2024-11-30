@@ -31,9 +31,9 @@ model domestic_flights {
   economy_seats            Int
   business_seats           Int
   first_seats              Int
-  available_economy_seats  Int?     @default(150)
-  available_business_seats Int?     @default(30)
-  available_first_seats    Int?     @default(10)
+  available_economy_seats  Int?
+  available_business_seats Int?
+  available_first_seats    Int?
   id                       String   @id @default(dbgenerated("nextval('domestic_flights_id_seq'::regclass)"))
 }
 
@@ -55,19 +55,22 @@ model international_flights {
   economy_seats            Int
   business_seats           Int
   first_seats              Int
-  available_economy_seats  Int?     @default(150)
-  available_business_seats Int?     @default(30)
-  available_first_seats    Int?     @default(10)
+  available_economy_seats  Int?
+  available_business_seats Int?
+  available_first_seats    Int?
 }
 
 model user {
-  id        Int     @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
-  email     String  @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
-  password  String  @db.VarChar
-  firstName String? @db.VarChar
-  lastName  String? @db.VarChar
-  role      Role    @default(USER)
-  bookings  bookings[]
+  id          Int        @id @default(autoincrement())
+  email       String     @unique @db.VarChar
+  password    String     @db.VarChar
+  firstName   String     @db.VarChar
+  lastName    String     @db.VarChar
+  codeId      String?    @db.VarChar
+  codeExpired String?    @db.VarChar
+  role        Role?      @default(USER)
+  isActive    Boolean    @default(false)
+  bookings    bookings[]
 }
 
 model bookings {
