@@ -10,6 +10,8 @@ export class BookingService {
   constructor(private prisma: PrismaService) {}
 
   async create(createBookingDto: CreateBookingDto, userId: number) {
+    console.log('Creating booking for user:', userId);
+
     const {
       tripType,
       outboundFlightId,

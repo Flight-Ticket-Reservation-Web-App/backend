@@ -12,6 +12,7 @@ import { CreateBookingDto } from '@/modules/booking/dto/create-booking.dto';
 import { JwtAuthGuard } from '@/auth/passport/jwt-auth.guard';
 import { Role } from '@/modules/role/role.decorator';
 import { RoleGuard } from '@/modules/role/role.guard';
+import { Public } from '@/decorator/public-decorator';
 
 @Controller('bookings')
 export class BookingController {
@@ -19,8 +20,8 @@ export class BookingController {
 
   @Role('user')
   @UseGuards(JwtAuthGuard, RoleGuard)
-  @HttpCode(HttpStatus.OK)
   @Post()
+  @HttpCode(HttpStatus.OK)
   async create(@Request() req, @Body() createBookingDto: CreateBookingDto) {
     return this.bookingService.create(createBookingDto, req.user.id);
   }

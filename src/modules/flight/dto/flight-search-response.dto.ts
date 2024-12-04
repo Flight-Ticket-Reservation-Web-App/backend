@@ -10,5 +10,6 @@ export interface FlightSearchResponseDto {
   airline: string;
   flightNo: string;
   availableSeats: number;
-  fare: number;
+  economyFare: number;
+  businessFare: number | null; // null when business class not available
 }

@@ -3,12 +3,12 @@ import { Type } from 'class-transformer';
 
 export enum PassengerType {
   ADULT = 'ADULT',
-  CHILD = 'CHILD'
+  CHILD = 'CHILD',
 }
 
 export enum Gender {
   MALE = 'MALE',
-  FEMALE = 'FEMALE'
+  FEMALE = 'FEMALE',
 }
 
 export class PassengerInfoDto {
@@ -34,6 +34,7 @@ export class PassengerInfoDto {
 
   @IsOptional()
   @IsDate()
+  @Type(() => Date) // Add transformer for passport expiry
   passportExpiry?: Date;
 
   @IsOptional()

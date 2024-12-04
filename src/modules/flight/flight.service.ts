@@ -136,7 +136,7 @@ export class FlightService {
     passengers: number,
     cabinClass: CabinClass,
   ): Promise<FlightSearchResponseDto[]> {
-    const weekday = date.getDay();
+    const weekday = date.getDay() === 0 ? 6 : date.getDay() - 1;
 
     const [domesticFlights, internationalFlights] = await Promise.all([
       this.prisma.domestic_flights.findMany({
@@ -162,30 +162,29 @@ export class FlightService {
 
     return allFlights
       .map((flight) => {
+        // Get available seats based on selected cabin class
         let availableSeats: number;
-        let fare: number;
-
         switch (cabinClass) {
           case CabinClass.ECONOMY:
             availableSeats = flight.available_economy_seats;
-            fare = Number(flight.economy_fare);
             break;
           case CabinClass.BUSINESS:
             availableSeats = flight.available_business_seats;
-            fare = Number(flight.business_fare);
             break;
-          case CabinClass.FIRST:
-            availableSeats = flight.available_first_seats;
-            fare = Number(flight.first_fare);
-            break;
+          default:
+            availableSeats = flight.available_economy_seats;
         }
 
-        // Check if fare is 0 (cabin class not available)
-        if (fare === 0) {
+        // Skip if no seats available for selected class
+        if (availableSeats < passengers) {
           return null;
         }
 
-        if (availableSeats < passengers) {
+        const economyFare = Number(flight.economy_fare);
+        const businessFare = Number(flight.business_fare);
+
+        // Skip if both fares are 0
+        if (economyFare === 0 && businessFare === 0) {
           return null;
         }
 
@@ -211,19 +210,17 @@ export class FlightService {
           airline: flight.airline,
           flightNo: flight.flight_no,
           availableSeats,
-          fare: fare * passengers,
+          economyFare: economyFare,
+          businessFare: businessFare || null,
         } as FlightSearchResponseDto;
       })
       .filter((flight): flight is FlightSearchResponseDto => flight !== null);
   }
 
   private combineDateAndTime(date: Date, time: Date): Date {
-    // Create new date object from search date
     const combined = new Date(date);
-    // Set time components
     combined.setUTCHours(time.getUTCHours());
-    combined.setUTCHours(time.getUTCHours());
-    combined.setUTCMinutes(time.getUTCHours());
+    combined.setUTCMinutes(time.getUTCMinutes()); // Fix: Was using hours instead of minutes
     combined.setUTCSeconds(0);
     combined.setUTCMilliseconds(0);
     return combined;
@@ -234,19 +231,8 @@ export class FlightService {
     duration: number,
     daysDiff: number,
   ): Date {
-    // Create new date object to avoid modifying original
     const arrivalDate = new Date(departDate);
-
-    // Add duration in minutes
     arrivalDate.setMinutes(arrivalDate.getMinutes() + duration);
-
-    // Only add days difference if the arrival time hasn't already crossed to next day
-    // Check if adding duration already pushed us to next day
-    const crossedMidnight = arrivalDate.getDate() !== departDate.getDate();
-    if (!crossedMidnight && daysDiff > 0) {
-      arrivalDate.setDate(arrivalDate.getDate() + daysDiff);
-    }
-
     return arrivalDate;
   }
 }
