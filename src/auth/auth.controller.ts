@@ -12,7 +12,7 @@ import { LocalAuthGuard } from '@/auth/passport/local-auth.guard';
 import { Public } from '@/decorator/public-decorator';
 import { CodeAuthDto, CreateAuthDto } from '@/auth/dto/create-auth.dto';
 import { MailerService } from '@nestjs-modules/mailer';
-import { UpdateAuthDto } from '@/auth/dto/update-auth.dto';
+import { ChangePassAuthDto, UpdateAuthDto } from '@/auth/dto/update-auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -54,39 +54,19 @@ export class AuthController {
     }
     return this.authService.reactivate(data);
   }
-  // @Get('mail')
-  // @Public()
-  // testMail() {
-  //   this.mailerService.sendMail({
-  //     to: 'nguyethang083@gmail.com',
-  //     subject: 'Testing Nest MailerModule ✔',
-  //     text: 'welcome',
-  //     template: 'register',
-  //     context: {
-  //       name: 'Hang',
-  //       activationCode: 123456,
-  //     },
-  //   });
-  //   return 'ok';
-  // }
 
-  // @Get()
-  // findAll() {
-  //   return this.authService.findAll();
-  // }
+  @Post('updatePassword')
+  @Public()
+  async updatePassword(@Body() data: UpdateAuthDto) {
+    if (!data.email && !data.id) {
+      throw new BadRequestException('Either email or id must be provided');
+    }
+    return this.authService.updatePassword(data);
+  }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.authService.findOne(+id);
-  // }
-
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-  //   return this.authService.update(+id, updateAuthDto);
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.authService.remove(+id);
-  // }
+  @Post('changePassword')
+  @Public()
+  async changePassword(@Body() data: ChangePassAuthDto) {
+    return this.authService.changePassword(data);
+  }
 }

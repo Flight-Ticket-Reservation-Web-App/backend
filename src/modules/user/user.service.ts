@@ -12,7 +12,7 @@ import { CodeAuthDto, CreateAuthDto } from '@/auth/dto/create-auth.dto';
 import { v4 as uuidv4 } from 'uuid';
 import dayjs from 'dayjs';
 import { MailerService } from '@nestjs-modules/mailer';
-import { UpdateAuthDto } from '@/auth/dto/update-auth.dto';
+import { ChangePassAuthDto, UpdateAuthDto } from '@/auth/dto/update-auth.dto';
 
 @Injectable()
 export class UserService {
@@ -21,6 +21,74 @@ export class UserService {
     private readonly mailerService: MailerService,
   ) {}
 
+  async handleChangePassword(data: ChangePassAuthDto) {
+    const { email, newPassword } = data;
+
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const currentTime = dayjs();
+    if (dayjs(user.codeExpired).isBefore(currentTime)) {
+      throw new ConflictException('Activation code has expired');
+    }
+    const newUserPassword = await hashPasswordHelper(newPassword);
+    await this.prisma.user.update({
+      where: { email },
+      data: { password: newUserPassword },
+    });
+    return 'Password updated successfully';
+  }
+  async handleUpdatePassword(data: UpdateAuthDto) {
+    const { email, id } = data;
+
+    if (!email && !id) {
+      throw new BadRequestException('Either email or id must be provided');
+    }
+
+    let user = null;
+
+    if (email) {
+      user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+    } else if (id) {
+      user = await this.prisma.user.findUnique({
+        where: { id },
+      });
+    }
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const codeId = uuidv4();
+    const codeExpired = dayjs().add(5, 'minutes').toISOString();
+
+    await this.prisma.user.update({
+      where: { email: user.email },
+      data: {
+        codeId,
+        codeExpired,
+      },
+    });
+
+    // Send an email with the new activation code
+    this.mailerService.sendMail({
+      to: user.email,
+      subject: 'CHANGE YOUR MEMBERSHIP PASSWORD',
+      template: 'register',
+      context: {
+        name: `${user.firstName} ${user.lastName}`,
+        activationCode: codeId,
+      },
+    });
+
+    return { id: user.id, email: user.email };
+  }
   async handleReactivate(data: UpdateAuthDto) {
     const { email, id } = data;
 
