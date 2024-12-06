@@ -138,10 +138,15 @@ export class UserService {
   }
 
   async handleActivate(data: CodeAuthDto) {
-    const { id, code } = data;
+    const { id, email, code } = data;
+    if (!email && !id) {
+      throw new BadRequestException('Either email or id must be provided');
+    }
+
     const user = await this.prisma.user.findFirst({
       where: {
-        id: id,
+        ...(id ? { id } : {}),
+        ...(email ? { email } : {}),
         codeId: code,
       },
     });
