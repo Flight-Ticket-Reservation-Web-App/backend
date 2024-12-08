@@ -3,28 +3,30 @@ import { Type } from 'class-transformer';
 import { PassengerInfoDto } from './passenger-info.dto';
 import { TripType, CabinClass } from '../../flight/dto/search-flight.dto';
 
-export class CreateBookingDto {
-  @IsEnum(TripType)
-  tripType: TripType;
-
+export class FlightSelectionDto {
   @IsString()
-  outboundFlightId: string;
-
-  @IsString()
-  @IsOptional()
-  returnFlightId?: string;
+  flightId: string;
 
   @IsEnum(CabinClass)
   cabinClass: CabinClass;
 
   @IsDate()
   @Type(() => Date)
-  departDate: Date;
+  date: Date;
+}
 
-  @IsDate()
+export class CreateBookingDto {
+  @IsEnum(TripType)
+  tripType: TripType;
+
+  @ValidateNested()
+  @Type(() => FlightSelectionDto)
+  outboundFlight: FlightSelectionDto;
+
   @IsOptional()
-  @Type(() => Date)
-  returnDate?: Date;
+  @ValidateNested()
+  @Type(() => FlightSelectionDto)
+  returnFlight?: FlightSelectionDto;
 
   @IsArray()
   @ValidateNested({ each: true })

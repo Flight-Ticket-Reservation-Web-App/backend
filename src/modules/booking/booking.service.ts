@@ -1,132 +1,178 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateBookingDto } from '@/modules/booking/dto/create-booking.dto';
 import { PassengerType } from '@/modules/booking/dto/passenger-info.dto';
 import { TripType, CabinClass } from '@/modules/flight/dto/search-flight.dto';
 import { v4 as uuidv4 } from 'uuid';
+import { TicketService } from '@/modules/ticket/ticket.service';
+import { BookingHistoryDto } from '@/modules/booking/dto/booking-history.dto';
+import { BookingHistoryQueryDto } from '@/modules/booking/dto/booking-history-query.dto';
+import { SortOrder } from '@/modules/booking/dto/booking-history-query.dto';
+import { BookingStatus } from '@/modules/booking/enums/booking-status.enum';
 
 @Injectable()
 export class BookingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private ticketService: TicketService,
+  ) {}
 
   async create(createBookingDto: CreateBookingDto, userId: number) {
-    console.log('Creating booking for user:', userId);
-
-    const {
-      tripType,
-      outboundFlightId,
-      returnFlightId,
-      cabinClass,
-      passengers,
-    } = createBookingDto;
+    const { tripType, outboundFlight, returnFlight, passengers } =
+      createBookingDto;
 
     // Validate flights and get their details
-    const outboundFlight = await this.validateAndGetFlight(
-      outboundFlightId,
-      cabinClass,
+    const outboundFlightDetails = await this.validateAndGetFlight(
+      outboundFlight.flightId,
+      outboundFlight.cabinClass,
     );
-    let returnFlight;
 
+    let returnFlightDetails;
     if (tripType === TripType.ROUND_TRIP) {
-      if (!returnFlightId) {
+      if (!returnFlight) {
         throw new BadRequestException('Return flight required for round trip');
       }
-      returnFlight = await this.validateAndGetFlight(
-        returnFlightId,
-        cabinClass,
+      returnFlightDetails = await this.validateAndGetFlight(
+        returnFlight.flightId,
+        returnFlight.cabinClass,
       );
     }
 
     // Validate seat availability
     await this.validateSeatAvailability(
-      outboundFlight,
-      cabinClass,
+      outboundFlightDetails,
+      outboundFlight.cabinClass,
       passengers.length,
     );
-    if (returnFlight) {
+
+    if (returnFlightDetails) {
       await this.validateSeatAvailability(
-        returnFlight,
-        cabinClass,
+        returnFlightDetails,
+        returnFlight.cabinClass,
         passengers.length,
       );
     }
 
     // Calculate total price
     const totalPrice = this.calculateTotalPrice(
-      outboundFlight,
-      returnFlight,
-      cabinClass,
+      outboundFlightDetails,
+      outboundFlight.cabinClass,
+      returnFlightDetails,
+      returnFlight?.cabinClass,
       passengers,
     );
 
-    return this.prisma.$transaction(async (prisma) => {
-      const booking = await prisma.bookings.create({
-        data: {
-          user_id: userId,
-          booking_number: uuidv4(),
-          total_amount: totalPrice,
-          trip_type: tripType,
-          cabin_class: cabinClass,
-          status: 'CONFIRMED',
-          booking_flights: {
-            create: [
-              {
-                flight_type: outboundFlight.type,
-                flight_id: outboundFlightId,
-                flight_direction: 'OUTBOUND',
-                flight_date: this.combineDateAndTime(
-                  createBookingDto.departDate,
-                  outboundFlight.depart_time,
-                ),
-                fare_amount: this.getFareAmount(outboundFlight, cabinClass),
-              },
-              ...(returnFlight
-                ? [
-                    {
-                      flight_type: returnFlight.type,
-                      flight_id: returnFlightId,
-                      flight_direction: 'RETURN',
-                      flight_date: this.combineDateAndTime(
-                        createBookingDto.returnDate,
-                        returnFlight.depart_time,
-                      ),
-                      fare_amount: this.getFareAmount(returnFlight, cabinClass),
-                    },
-                  ]
-                : []),
-            ],
+    return await this.prisma.$transaction(
+      async (prisma) => {
+        const booking = await prisma.bookings.create({
+          data: {
+            user_id: userId,
+            booking_number: uuidv4(),
+            total_amount: totalPrice,
+            trip_type: tripType,
+            cabin_class: `${outboundFlight.cabinClass}${returnFlight ? '/' + returnFlight.cabinClass : ''}`,
+            status: 'CONFIRMED',
+            booking_flights: {
+              create: [
+                {
+                  flight_type: outboundFlightDetails.type,
+                  flight_id: outboundFlight.flightId,
+                  flight_direction: 'OUTBOUND',
+                  flight_date: this.combineDateAndTime(
+                    outboundFlight.date,
+                    outboundFlightDetails.depart_time,
+                  ),
+                  fare_amount: this.getFareAmount(
+                    outboundFlightDetails,
+                    outboundFlight.cabinClass,
+                  ),
+                },
+                ...(returnFlightDetails
+                  ? [
+                      {
+                        flight_type: returnFlightDetails.type,
+                        flight_id: returnFlight.flightId,
+                        flight_direction: 'RETURN',
+                        flight_date: this.combineDateAndTime(
+                          returnFlight.date,
+                          returnFlightDetails.depart_time,
+                        ),
+                        fare_amount: this.getFareAmount(
+                          returnFlightDetails,
+                          returnFlight.cabinClass,
+                        ),
+                      },
+                    ]
+                  : []),
+              ],
+            },
+            booking_passengers: {
+              create: passengers.map((p) => ({
+                first_name: p.firstName,
+                last_name: p.lastName,
+                type: p.type,
+                gender: p.gender,
+                dob: new Date(p.dob),
+                passport_number: p.passportNumber,
+                passport_expiry: p.passportExpiry
+                  ? new Date(p.passportExpiry)
+                  : null,
+                nationality: p.nationality,
+              })),
+            },
           },
-          booking_passengers: {
-            create: passengers.map((p) => ({
-              first_name: p.firstName,
-              last_name: p.lastName,
-              type: p.type,
-              gender: p.gender,
-              dob: new Date(p.dob),
-              passport_number: p.passportNumber,
-              passport_expiry: p.passportExpiry
-                ? new Date(p.passportExpiry)
-                : null,
-              nationality: p.nationality,
-            })),
+          include: {
+            booking_flights: true,
+            booking_passengers: true,
           },
-        },
-        include: {
-          booking_flights: true,
-          booking_passengers: true,
-        },
-      });
+        });
 
-      await this.updateFlightSeats(
-        prisma,
-        outboundFlightId,
-        returnFlightId,
-        cabinClass,
-        passengers.length,
-      );
+        // Update seats for outbound flight
+        await this.updateFlightSeats(
+          prisma,
+          outboundFlight.flightId,
+          outboundFlight.cabinClass,
+          passengers.length,
+        );
 
-      return booking;
-    });
+        // Update seats for return flight if exists
+        if (returnFlight) {
+          await this.updateFlightSeats(
+            prisma,
+            returnFlight.flightId,
+            returnFlight.cabinClass,
+            passengers.length,
+          );
+        }
+
+        // Generate tickets after booking creation
+        const ticketResult = await this.ticketService.generateTickets(
+          prisma,
+          booking.id,
+          booking.booking_passengers,
+          booking.booking_flights,
+          booking.cabin_class,
+        );
+
+        // Send emails after transaction completes
+        setImmediate(() => {
+          this.ticketService
+            .sendTicketEmails(ticketResult.userEmail, ticketResult.ticketData)
+            .catch((err) =>
+              console.error('Failed to send ticket emails:', err),
+            );
+        });
+
+        return booking;
+      },
+      {
+        timeout: 10000, // Extend timeout to 10 seconds
+      },
+    );
   }
 
   private async validateAndGetFlight(flightId: string, cabinClass: CabinClass) {
@@ -198,13 +244,14 @@ export class BookingService {
 
   private calculateTotalPrice(
     outboundFlight: any,
+    outboundCabinClass: CabinClass,
     returnFlight: any,
-    cabinClass: CabinClass,
+    returnCabinClass: CabinClass,
     passengers: any[],
   ) {
-    const outboundFare = this.getFareAmount(outboundFlight, cabinClass);
+    const outboundFare = this.getFareAmount(outboundFlight, outboundCabinClass);
     const returnFare = returnFlight
-      ? this.getFareAmount(returnFlight, cabinClass)
+      ? this.getFareAmount(returnFlight, returnCabinClass)
       : 0;
 
     return passengers.reduce((total, passenger) => {
@@ -228,33 +275,25 @@ export class BookingService {
 
   private async updateFlightSeats(
     prisma: any,
-    outboundFlightId: string,
-    returnFlightId: string | undefined,
+    flightId: string,
     cabinClass: CabinClass,
     passengerCount: number,
   ) {
     const seatField = this.getSeatField(cabinClass);
 
-    const updateSeats = async (flightId: string) => {
-      const prefix = flightId.charAt(0).toUpperCase();
-      const numericId = flightId.slice(1);
+    const prefix = flightId.charAt(0).toUpperCase();
+    const numericId = flightId.slice(1);
 
-      if (prefix === 'D') {
-        await prisma.domestic_flights.update({
-          where: { id: `D${numericId}` },
-          data: { [seatField]: { decrement: passengerCount } },
-        });
-      } else if (prefix === 'I') {
-        await prisma.international_flights.update({
-          where: { id: `I${numericId}` },
-          data: { [seatField]: { decrement: passengerCount } },
-        });
-      }
-    };
-
-    await updateSeats(outboundFlightId);
-    if (returnFlightId) {
-      await updateSeats(returnFlightId);
+    if (prefix === 'D') {
+      await prisma.domestic_flights.update({
+        where: { id: `D${numericId}` },
+        data: { [seatField]: { decrement: passengerCount } },
+      });
+    } else if (prefix === 'I') {
+      await prisma.international_flights.update({
+        where: { id: `I${numericId}` },
+        data: { [seatField]: { decrement: passengerCount } },
+      });
     }
   }
 
@@ -270,7 +309,7 @@ export class BookingService {
   }
 
   private combineDateAndTime(date: Date, time: Date): Date {
-    console.log('Raw inputs:', { date, time });
+    // console.log('Raw inputs:', { date, time });
 
     // Ensure date is valid
     const bookingDate = new Date(date);
@@ -290,10 +329,10 @@ export class BookingService {
       throw new BadRequestException(`Invalid flight time: ${time}`);
     }
 
-    console.log('Parsed dates:', {
-      bookingDate: bookingDate.toISOString(),
-      flightTime: flightTime.toISOString(),
-    });
+    // console.log('Parsed dates:', {
+    //   bookingDate: bookingDate.toISOString(),
+    //   flightTime: flightTime.toISOString(),
+    // });
 
     // Combine date and time
     const combined = new Date(bookingDate);
@@ -302,6 +341,242 @@ export class BookingService {
     combined.setUTCSeconds(0);
     combined.setUTCMilliseconds(0);
 
+    // console.log('Combined date and time:', {
+    //   raw: combined,
+    //   iso: combined.toISOString(),
+    //   utc: combined.toUTCString(),
+    // });
+
     return combined;
+  }
+
+  async getBookingHistory(
+    userId: number,
+    query: BookingHistoryQueryDto,
+  ): Promise<{ data: BookingHistoryDto[]; total: number; pages: number }> {
+    const { status, sortOrder = SortOrder.DESC, page = 1, limit = 10 } = query;
+
+    // Calculate skip for pagination
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const total = await this.prisma.bookings.count({
+      where: {
+        user_id: userId,
+        ...(status && { status }),
+      },
+    });
+
+    // Calculate total pages
+    const pages = Math.ceil(total / limit);
+
+    const bookings = await this.prisma.bookings.findMany({
+      where: {
+        user_id: userId,
+        ...(status && { status }),
+      },
+      include: {
+        booking_flights: true,
+        booking_passengers: true,
+      },
+      orderBy: {
+        created_at: sortOrder,
+      },
+      skip,
+      take: limit,
+    });
+
+    const data = bookings.map((booking) => ({
+      id: booking.id,
+      bookingNumber: booking.booking_number,
+      totalAmount: Number(booking.total_amount),
+      tripType: booking.trip_type,
+      cabinClass: booking.cabin_class,
+      status: booking.status,
+      createdAt: booking.created_at,
+      flights: booking.booking_flights.map((flight) => ({
+        flightId: flight.flight_id,
+        flightType: flight.flight_type,
+        flightDirection: flight.flight_direction,
+        flightDate: flight.flight_date,
+        fareAmount: Number(flight.fare_amount),
+      })),
+      passengers: booking.booking_passengers.map((passenger) => ({
+        firstName: passenger.first_name,
+        lastName: passenger.last_name,
+        type: passenger.type as PassengerType,
+        gender: passenger.gender,
+        passportNumber: passenger.passport_number || undefined,
+      })),
+    }));
+
+    return { data, total, pages };
+  }
+
+  async getBookingByNumber(
+    bookingNumber: string,
+    userId: number,
+  ): Promise<BookingHistoryDto> {
+    const booking = await this.prisma.bookings.findUnique({
+      where: {
+        booking_number: bookingNumber,
+        user_id: userId,
+      },
+      include: {
+        booking_flights: true,
+        booking_passengers: true,
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundException(`Booking #${bookingNumber} not found`);
+    }
+
+    return {
+      id: booking.id,
+      bookingNumber: booking.booking_number,
+      totalAmount: Number(booking.total_amount),
+      tripType: booking.trip_type,
+      cabinClass: booking.cabin_class,
+      status: booking.status,
+      createdAt: booking.created_at,
+      flights: booking.booking_flights.map((flight) => ({
+        flightId: flight.flight_id,
+        flightType: flight.flight_type,
+        flightDirection: flight.flight_direction,
+        flightDate: flight.flight_date,
+        fareAmount: Number(flight.fare_amount),
+      })),
+      passengers: booking.booking_passengers.map((passenger) => ({
+        firstName: passenger.first_name,
+        lastName: passenger.last_name,
+        type: passenger.type as PassengerType,
+        gender: passenger.gender,
+        passportNumber: passenger.passport_number || undefined,
+      })),
+    };
+  }
+
+  async cancelBooking(
+    bookingNumber: string,
+    userId: number,
+  ): Promise<BookingHistoryDto> {
+    // Execute in transaction to ensure all updates succeed or fail together
+    return await this.prisma.$transaction(async (prisma) => {
+      // Get booking with flights and validate
+      const booking = await prisma.bookings.findUnique({
+        where: {
+          booking_number: bookingNumber,
+          user_id: userId,
+        },
+        include: {
+          booking_flights: true,
+          booking_passengers: true,
+          user: true, // Include user information to get email
+        },
+      });
+
+      if (!booking) {
+        throw new NotFoundException(`Booking #${bookingNumber} not found`);
+      }
+
+      if (booking.status === BookingStatus.CANCELLED) {
+        throw new BadRequestException('Booking is already cancelled');
+      }
+
+      // Calculate flight dates to check if cancellation is allowed
+      const now = new Date();
+      const hasUpcomingFlights = booking.booking_flights.some(
+        (flight) => new Date(flight.flight_date) > now,
+      );
+
+      if (!hasUpcomingFlights) {
+        throw new BadRequestException(
+          'Cannot cancel booking - all flights have departed',
+        );
+      }
+
+      // Update booking status
+      const updatedBooking = await prisma.bookings.update({
+        where: { booking_number: bookingNumber },
+        data: {
+          status: BookingStatus.CANCELLED,
+          tickets: {
+            updateMany: {
+              where: { booking_id: booking.id },
+              data: { status: 'CANCELLED' },
+            },
+          },
+        },
+        include: {
+          booking_flights: true,
+          booking_passengers: true,
+        },
+      });
+
+      // Restore seats for each flight
+      for (const flight of booking.booking_flights) {
+        const cabinClass =
+          booking.cabin_class.split('/')[
+            flight.flight_direction === 'OUTBOUND' ? 0 : 1
+          ];
+        const seatField = this.getSeatField(cabinClass as CabinClass);
+        const prefix = flight.flight_id.charAt(0).toUpperCase();
+        const numericId = flight.flight_id.slice(1);
+
+        if (prefix === 'D') {
+          await prisma.domestic_flights.update({
+            where: { id: `D${numericId}` },
+            data: {
+              [seatField]: { increment: booking.booking_passengers.length },
+            },
+          });
+        } else if (prefix === 'I') {
+          await prisma.international_flights.update({
+            where: { id: `I${numericId}` },
+            data: {
+              [seatField]: { increment: booking.booking_passengers.length },
+            },
+          });
+        }
+      }
+
+      // Send cancellation email after successful update
+      setImmediate(() => {
+        this.ticketService
+          .sendBookingCancellationEmail(
+            booking.user.email,
+            bookingNumber,
+            Number(booking.total_amount),
+          )
+          .catch((err) =>
+            console.error('Failed to send cancellation email:', err),
+          );
+      });
+
+      return {
+        id: updatedBooking.id,
+        bookingNumber: updatedBooking.booking_number,
+        totalAmount: Number(updatedBooking.total_amount),
+        tripType: updatedBooking.trip_type,
+        cabinClass: updatedBooking.cabin_class,
+        status: updatedBooking.status,
+        createdAt: updatedBooking.created_at,
+        flights: updatedBooking.booking_flights.map((flight) => ({
+          flightId: flight.flight_id,
+          flightType: flight.flight_type,
+          flightDirection: flight.flight_direction,
+          flightDate: flight.flight_date,
+          fareAmount: Number(flight.fare_amount),
+        })),
+        passengers: updatedBooking.booking_passengers.map((passenger) => ({
+          firstName: passenger.first_name,
+          lastName: passenger.last_name,
+          type: passenger.type as PassengerType,
+          gender: passenger.gender,
+          passportNumber: passenger.passport_number || undefined,
+        })),
+      };
+    });
   }
 }
