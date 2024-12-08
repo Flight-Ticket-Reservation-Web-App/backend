@@ -86,6 +86,7 @@ model bookings {
   booking_flights    booking_flights[]
   booking_passengers booking_passengers[]
   user               user?                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tickets            tickets[]
 }
 
 model booking_flights {
@@ -113,9 +114,33 @@ model booking_passengers {
   passport_expiry DateTime? @db.Date
   nationality     String?   @db.VarChar
   booking         bookings? @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tickets         tickets[]
+}
+
+model tickets {
+  id            Int                @id @default(autoincrement())
+  ticket_number String             @unique @db.VarChar(255)
+  booking_id    Int
+  passenger_id  Int
+  flight_id     String             @db.VarChar(255)
+  seat_number   String             @db.VarChar(255)
+  gate          String?            @db.VarChar(255)
+  barcode       String             @db.VarChar(255)
+  status        TicketStatus?      @default(CONFIRMED)
+  created_at    DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?          @default(now()) @updatedAt @db.Timestamp(6)
+  booking       bookings           @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_booking_id")
+  passenger     booking_passengers @relation(fields: [passenger_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_passenger_id")
+
+  @@unique([booking_id, passenger_id, flight_id], map: "unique_booking_passenger_flight")
 }
 
 enum Role {
   USER
   ADMIN
+}
+
+enum TicketStatus {
+  CONFIRMED
+  CANCELLED
 }
