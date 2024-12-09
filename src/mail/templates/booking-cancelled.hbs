@@ -26,6 +26,17 @@
           <p style="margin: 8px 0;"><strong>Cancellation Date:</strong> {{cancellationDate}}</p>
         </div>
 
+        <div style="margin: 24px 0;">
+          <h2 style="color: #8F2257; margin: 0 0 16px;">Cancelled Tickets</h2>
+          {{#each tickets}}
+          <div style="background-color: #f4e8f7; padding: 16px; border-radius: 8px; margin-bottom: 8px;">
+            <p style="margin: 4px 0;"><strong>Ticket:</strong> {{ticketNumber}}</p>
+            <p style="margin: 4px 0;"><strong>Passenger:</strong> {{passengerName}}</p>
+            <p style="margin: 4px 0;"><strong>Flight:</strong> {{flightId}}</p>
+          </div>
+          {{/each}}
+        </div>
+
         <p style="font-size: 14px; color: #666666; margin-top: 24px;">
           Please note that refund processing may take 5-7 business days depending on your bank.
         </p>
