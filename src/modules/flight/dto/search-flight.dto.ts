@@ -7,17 +7,7 @@ import {
   IsOptional,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-
-export enum TripType {
-  ONE_WAY = 'ONE_WAY',
-  ROUND_TRIP = 'ROUND_TRIP',
-}
-
-export enum CabinClass {
-  ECONOMY = 'ECONOMY',
-  BUSINESS = 'BUSINESS',
-  FIRST = 'FIRST',
-}
+import { TripType, CabinClass } from '@/common/enums';
 
 export class SearchFlightDto {
   @IsString()

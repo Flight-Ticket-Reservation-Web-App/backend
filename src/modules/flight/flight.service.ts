@@ -1,12 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import {
-  SearchFlightDto,
-  TripType,
-  CabinClass,
-} from '@/modules/flight/dto/search-flight.dto';
+import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';
 import { FlightSearchResponseDto } from '@/modules/flight/dto/flight-search-response.dto';
 import { domestic_flights, international_flights } from '@prisma/client';
+import { CabinClass, TripType } from '@/common/enums';
 
 @Injectable()
 export class FlightService {

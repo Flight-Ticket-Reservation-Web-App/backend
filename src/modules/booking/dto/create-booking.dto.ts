@@ -1,7 +1,14 @@
-import { IsEnum, IsArray, ValidateNested, IsString, IsOptional, IsDate } from 'class-validator';
+import {
+  IsEnum,
+  IsArray,
+  ValidateNested,
+  IsString,
+  IsOptional,
+  IsDate,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { PassengerInfoDto } from './passenger-info.dto';
-import { TripType, CabinClass } from '../../flight/dto/search-flight.dto';
+import { PassengerInfoDto } from '@/modules/booking/dto/passenger-info.dto';
+import { CabinClass, TripType } from '@/common/enums';
 
 export class FlightSelectionDto {
   @IsString()

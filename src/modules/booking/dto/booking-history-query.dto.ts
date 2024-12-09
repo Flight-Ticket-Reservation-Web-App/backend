@@ -1,11 +1,7 @@
 import { IsEnum, IsInt, IsOptional, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { TicketStatus } from '@prisma/client';
-
-export enum SortOrder {
-  ASC = 'asc',
-  DESC = 'desc',
-}
+import { SortOrder } from '@/common/enums/sort-order.enum';
 
 export class BookingHistoryQueryDto {
   @IsOptional()

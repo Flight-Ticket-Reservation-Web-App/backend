@@ -5,14 +5,17 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateBookingDto } from '@/modules/booking/dto/create-booking.dto';
-import { PassengerType } from '@/modules/booking/dto/passenger-info.dto';
-import { TripType, CabinClass } from '@/modules/flight/dto/search-flight.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { TicketService } from '@/modules/ticket/ticket.service';
 import { BookingHistoryDto } from '@/modules/booking/dto/booking-history.dto';
 import { BookingHistoryQueryDto } from '@/modules/booking/dto/booking-history-query.dto';
-import { SortOrder } from '@/modules/booking/dto/booking-history-query.dto';
-import { BookingStatus } from '@/modules/booking/enums/booking-status.enum';
+import {
+  SortOrder,
+  CabinClass,
+  TripType,
+  PassengerType,
+  BookingStatus,
+} from '@/common/enums';
 
 @Injectable()
 export class BookingService {

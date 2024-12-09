@@ -1,5 +1,4 @@
-// src/modules/booking/dto/booking-history.dto.ts
-import { PassengerType } from './passenger-info.dto';
+import { PassengerType } from '@/common/enums';
 
 export class BookingHistoryFlightDto {
   flightId: string;

@@ -1,15 +1,6 @@
 import { IsString, IsEnum, IsDate, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
-
-export enum PassengerType {
-  ADULT = 'ADULT',
-  CHILD = 'CHILD',
-}
-
-export enum Gender {
-  MALE = 'MALE',
-  FEMALE = 'FEMALE',
-}
+import { Gender, PassengerType } from '@/common/enums';
 
 export class PassengerInfoDto {
   @IsString()

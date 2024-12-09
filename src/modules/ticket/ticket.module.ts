@@ -1,4 +1,3 @@
-// src/modules/ticket/ticket.module.ts
 import { Module } from '@nestjs/common';
 import { TicketService } from './ticket.service';
 import { PrismaModule } from '@/prisma/prisma.module';
