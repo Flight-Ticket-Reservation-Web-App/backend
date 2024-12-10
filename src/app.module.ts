@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '@/auth/passport/jwt-auth.guard';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { BookingModule } from '@/modules/booking/booking.module';
+import { TicketModule } from '@/modules/ticket/ticket.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { BookingModule } from '@/modules/booking/booking.module';
     PrismaModule,
     AuthModule,
     BookingModule,
+    TicketModule,
   ],
   controllers: [AppController],
   providers: [

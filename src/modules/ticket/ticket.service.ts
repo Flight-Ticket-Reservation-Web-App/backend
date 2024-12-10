@@ -1,8 +1,14 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { MailerService } from '@nestjs-modules/mailer';
+import { FlightStatusResponseDto } from '@/modules/ticket/dto/flight-status-response.dto';
+import { FlightStatus } from '@/modules/ticket/dto/flight-status-response.dto';
 
 @Injectable()
 export class TicketService {
@@ -143,16 +149,16 @@ export class TicketService {
     try {
       // Get all cancelled tickets for this booking
       const tickets = await this.prisma.tickets.findMany({
-        where: { 
+        where: {
           booking: { booking_number: bookingNumber },
-          status: 'CANCELLED'
+          status: 'CANCELLED',
         },
         include: {
           passenger: true,
           booking: {
-            include: { booking_flights: true }
-          }
-        }
+            include: { booking_flights: true },
+          },
+        },
       });
 
       await this.mailerService.sendMail({
@@ -168,11 +174,11 @@ export class TicketService {
             year: 'numeric',
             timeZone: 'UTC',
           }),
-          tickets: tickets.map(ticket => ({
+          tickets: tickets.map((ticket) => ({
             ticketNumber: ticket.ticket_number,
             passengerName: `${ticket.passenger.first_name} ${ticket.passenger.last_name}`,
-            flightId: ticket.flight_id
-          }))
+            flightId: ticket.flight_id,
+          })),
         },
       });
     } catch (err) {
@@ -181,6 +187,68 @@ export class TicketService {
         err,
       );
     }
+  }
+
+  async checkFlightStatus(
+    ticketNumber: string,
+  ): Promise<FlightStatusResponseDto> {
+    // Get ticket with flight info through booking
+    const ticket = await this.prisma.tickets.findUnique({
+      where: { ticket_number: ticketNumber },
+      include: {
+        booking: {
+          include: {
+            booking_flights: true,
+          },
+        },
+      },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException(`Ticket ${ticketNumber} not found`);
+    }
+
+    // Get flight details
+    const flightId = ticket.flight_id;
+    const prefix = flightId.charAt(0).toUpperCase();
+    const numericId = flightId.slice(1);
+    let flight;
+
+    if (prefix === 'D') {
+      flight = await this.prisma.domestic_flights.findUnique({
+        where: { id: `D${numericId}` },
+      });
+    } else if (prefix === 'I') {
+      flight = await this.prisma.international_flights.findUnique({
+        where: { id: `I${numericId}` },
+      });
+    }
+
+    if (!flight) {
+      throw new NotFoundException(`Flight ${flightId} not found`);
+    }
+
+    // Format date
+    const flightDate = new Date(ticket.booking.booking_flights[0].flight_date);
+    const formattedDate = flightDate.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    });
+
+    return {
+      ticketNumber: ticket.ticket_number,
+      flightId: ticket.flight_id,
+      status:
+        flight.delay_duration > 0 ? FlightStatus.DELAYED : FlightStatus.ON_TIME,
+      flightDate: formattedDate,
+      delayDuration:
+        flight.delay_duration > 0 ? flight.delay_duration : undefined,
+      gate: ticket.gate,
+    };
   }
 
   private async assignSeatNumber(
