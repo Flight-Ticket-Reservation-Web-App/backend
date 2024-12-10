@@ -35,6 +35,7 @@ model domestic_flights {
   available_business_seats Int?
   available_first_seats    Int?
   id                       String   @id @default(dbgenerated("nextval('domestic_flights_id_seq'::regclass)"))
+  delay_duration           Int      @default(0)
 }
 
 model international_flights {
@@ -58,6 +59,7 @@ model international_flights {
   available_economy_seats  Int?
   available_business_seats Int?
   available_first_seats    Int?
+  delay_duration           Int      @default(0)
 }
 
 model user {

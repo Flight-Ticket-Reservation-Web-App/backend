@@ -1,0 +1,33 @@
+<html>
+  <head>
+    <title>QAirline Flight Delay Notice</title>
+    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <link href='https://fonts.googleapis.com/css2?family=Satoshi:wght@400;500;700&display=swap' rel='stylesheet' />
+  </head>
+  <body style="margin: 0; padding: 0; font-family: 'Satoshi', Arial, sans-serif; background-color: #f9f5fc;">
+    <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
+      <div style="background-color: #8F2257; padding: 32px; color: #ffffff; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">Flight Delay Notice</h1>
+      </div>
+      
+      <div style="padding: 32px;">
+        <p>Dear Valued Customer,</p>
+        <p>We regret to inform you that your upcoming flight has been delayed.</p>
+        
+        <div style="background-color: #f9f5fc; padding: 20px; border-radius: 8px; margin: 24px 0;">
+          <p style="margin: 8px 0;"><strong>Booking Number:</strong> {{bookingNumber}}</p>
+          <p style="margin: 8px 0;"><strong>Flight Number:</strong> {{flightId}}</p>
+          <p style="margin: 8px 0;"><strong>Flight Date:</strong> {{flightDate}}</p>
+          <p style="margin: 8px 0;"><strong>Delay Duration:</strong> {{delayDuration}} minutes</p>
+        </div>
+
+        <p>We apologize for any inconvenience this may cause. Please plan accordingly.</p>
+      </div>
+
+      <div style="background-color: #f9f5fc; padding: 24px; text-align: center;">
+        <p style="margin: 0;">Need assistance? Contact our <a href="#" style="color: #8F2257;">Support Center</a></p>
+      </div>
+    </div>
+  </body>
+</html>

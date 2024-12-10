@@ -4,10 +4,14 @@ import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';
 import { FlightSearchResponseDto } from '@/modules/flight/dto/flight-search-response.dto';
 import { domestic_flights, international_flights } from '@prisma/client';
 import { CabinClass, TripType } from '@/common/enums';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class FlightService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailerService: MailerService,
+  ) {}
 
   // Domestic Flights
   async findAllDomestic(): Promise<domestic_flights[]> {
@@ -117,6 +121,85 @@ export class FlightService {
     );
 
     return { outboundFlights, returnFlights };
+  }
+
+  async updateFlightDelay(flightId: string, delayDuration: number) {
+    const prefix = flightId.charAt(0).toUpperCase();
+    const numericId = flightId.slice(1);
+    let flight;
+
+    // Update flight delay
+    if (prefix === 'D') {
+      flight = await this.prisma.domestic_flights.update({
+        where: { id: `D${numericId}` },
+        data: { delay_duration: delayDuration },
+      });
+    } else if (prefix === 'I') {
+      flight = await this.prisma.international_flights.update({
+        where: { id: `I${numericId}` },
+        data: { delay_duration: delayDuration },
+      });
+    } else {
+      throw new BadRequestException('Invalid flight ID format');
+    }
+
+    // Find affected active bookings and notify users
+    const now = new Date();
+    const affectedBookings = await this.prisma.bookings.findMany({
+      where: {
+        status: 'CONFIRMED', // Only get active bookings
+        booking_flights: {
+          some: {
+            flight_id: flightId,
+            flight_date: {
+              gt: now, // Only future flights
+            },
+          },
+        },
+      },
+      include: {
+        user: true,
+        booking_flights: {
+          where: {
+            flight_id: flightId,
+          },
+        },
+      },
+    });
+
+    // Send notifications
+    for (const booking of affectedBookings) {
+      try {
+        const flightDate = booking.booking_flights[0].flight_date;
+        const formattedDate = new Date(flightDate).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'UTC',
+        });
+
+        await this.mailerService.sendMail({
+          to: booking.user.email,
+          subject: 'Flight Delay Notification',
+          template: './flight-delay',
+          context: {
+            bookingNumber: booking.booking_number,
+            flightId: flightId,
+            flightDate: formattedDate,
+            delayDuration: delayDuration,
+          },
+        });
+      } catch (err) {
+        console.error(
+          `Failed to send delay notification for booking ${booking.booking_number}:`,
+          err,
+        );
+      }
+    }
+
+    return flight;
   }
 
   private formatTimeOnly(date: Date): string {

@@ -353,6 +353,8 @@ export class BookingService {
     return combined;
   }
 
+  //
+  
   async getBookingHistory(
     userId: number,
     query: BookingHistoryQueryDto,

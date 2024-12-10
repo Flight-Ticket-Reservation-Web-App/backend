@@ -10,9 +10,11 @@ import {
 import { FlightService } from '@/modules/flight/flight.service';
 import { domestic_flights, international_flights } from '@prisma/client';
 import { Role } from '@/modules/role/role.decorator';
+import { UpdateFlightDelayDto } from '@/modules/flight/dto/update-flight-delay.dto';
+import { Public } from '@/decorator/public-decorator';
 
-@Role('admin')
 @Controller('admin/flights')
+@Public()
 export class AdminFlightController {
   constructor(private readonly flightService: FlightService) {}
 
@@ -76,5 +78,13 @@ export class AdminFlightController {
   @Delete('international/:id')
   deleteInternational(@Param('id') id: string): Promise<international_flights> {
     return this.flightService.deleteInternational(id);
+  }
+
+  @Put('delay')
+  async updateFlightDelay(@Body() updateDelayDto: UpdateFlightDelayDto) {
+    return this.flightService.updateFlightDelay(
+      updateDelayDto.flightId,
+      updateDelayDto.delayDuration,
+    );
   }
 }
