@@ -7,6 +7,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { buildQueryOptions } from '@/utils/query';
 import { CreateNewsDto } from '@/modules/news/dto/create-news.dto';
+import { UpdateNewsDto } from './dto/update-news.dto';
 
 @Injectable()
 export class NewsService {
@@ -47,6 +48,36 @@ export class NewsService {
             connect: { id: adminId },
           },
         },
+      });
+    } catch {
+      throw new BadRequestException(
+        'Invalid user ID or other validation error',
+      );
+    }
+  }
+
+  async deleteNews(id: number) {
+    const news = await this.prisma.news.findUnique({ where: { id } });
+    if (!news) {
+      throw new BadRequestException('News item not found');
+    }
+    return this.prisma.news.delete({ where: { id } });
+  }
+
+  async updateNews(id: number, updateNewsDto: UpdateNewsDto) {
+    const { adminId, ...newsData } = updateNewsDto;
+    try {
+      const news = await this.prisma.news.findUnique({ where: { id } });
+      if (!news) {
+        throw new BadRequestException('News item not found');
+      }
+      const updateData: any = { ...newsData };
+      if (adminId) {
+        updateData.user = { connect: { id: adminId } };
+      }
+      return await this.prisma.news.update({
+        where: { id },
+        data: updateData,
       });
     } catch {
       throw new BadRequestException(
