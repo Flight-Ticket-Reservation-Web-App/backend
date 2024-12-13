@@ -9,9 +9,10 @@ import {
 } from '@nestjs/common';
 import { FlightService } from '@/modules/flight/flight.service';
 import { domestic_flights, international_flights } from '@prisma/client';
-import { Role } from '@/modules/role/role.decorator';
+import { Roles } from '@/modules/role/role.decorator';
+import { Role } from '@/common/enums';
 
-@Role('admin')
+@Roles(Role.ADMIN)
 @Controller('admin/flights')
 export class AdminFlightController {
   constructor(private readonly flightService: FlightService) {}

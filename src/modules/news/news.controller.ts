@@ -11,12 +11,12 @@ import { NewsService } from '@/modules/news/news.service';
 import { PaginationDto } from '@/common/dto/pagination.dto';
 import { CreateNewsDto } from '@/modules/news/dto/create-news.dto';
 import { NewsCategory } from '@prisma/client';
-import { Role } from '@/modules/role/role.decorator';
-import { Roles } from '@/common/enums/role.enum';
+import { Roles } from '@/modules/role/role.decorator';
+import { Role } from '@/common/enums/role.enum';
 import { RoleGuard } from '@/modules/role/role.guard';
 
 @UseGuards(RoleGuard)
-@Role(Roles.ADMIN)
+@Roles(Role.ADMIN)
 @Controller('news')
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}

@@ -4,6 +4,8 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { CodeAuthDto, CreateAuthDto } from '@/auth/dto/create-auth.dto';
 import { ChangePassAuthDto, UpdateAuthDto } from '@/auth/dto/update-auth.dto';
+import { CurrentUser } from '@/common/dto/currentUser';
+import { Role } from '@/common/enums';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +13,18 @@ export class AuthService {
     private usersService: UserService,
     private jwtService: JwtService,
   ) {}
+
+  async validateJwtUser(id: number): Promise<any> {
+    const user = await this.usersService.findById(id);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const currentUser: CurrentUser = {
+      id: user.id,
+      role: user.role as unknown as Role,
+    };
+    return currentUser;
+  }
 
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(username);
