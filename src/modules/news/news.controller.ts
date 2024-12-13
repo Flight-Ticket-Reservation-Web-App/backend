@@ -11,9 +11,9 @@ import { NewsService } from '@/modules/news/news.service';
 import { PaginationDto } from '@/common/dto/pagination.dto';
 import { CreateNewsDto } from '@/modules/news/dto/create-news.dto';
 import { NewsCategory } from '@prisma/client';
-import { Roles } from '@/modules/role/role.decorator';
+import { Roles } from '@/auth/role/role.decorator';
 import { Role } from '@/common/enums/role.enum';
-import { RoleGuard } from '@/modules/role/role.guard';
+import { RoleGuard } from '@/auth/role/role.guard';
 
 @UseGuards(RoleGuard)
 @Roles(Role.ADMIN)

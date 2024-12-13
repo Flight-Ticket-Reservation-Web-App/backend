@@ -13,7 +13,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { BookingModule } from '@/modules/booking/booking.module';
 import { NewsModule } from '@/modules/news/news.module';
-import { RoleGuard } from './modules/role/role.guard';
+import { RoleGuard } from '@/auth/role/role.guard';
 
 @Module({
   imports: [

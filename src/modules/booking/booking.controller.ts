@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { BookingService } from '@/modules/booking/booking.service';
 import { CreateBookingDto } from '@/modules/booking/dto/create-booking.dto';
-import { RoleGuard } from '@/modules/role/role.guard';
+import { RoleGuard } from '@/auth/role/role.guard';
 import { UnauthorizedException } from '@nestjs/common';
 import { BookingHistoryDto } from '@/modules/booking/dto/booking-history.dto';
 import { BookingHistoryQueryDto } from '@/modules/booking/dto/booking-history-query.dto';

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { FlightService } from '@/modules/flight/flight.service';
 import { domestic_flights, international_flights } from '@prisma/client';
-import { Roles } from '@/modules/role/role.decorator';
+import { Roles } from '@/auth/role/role.decorator';
 import { Role } from '@/common/enums';
 
 @Roles(Role.ADMIN)
