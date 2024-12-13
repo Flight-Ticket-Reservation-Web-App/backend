@@ -6,11 +6,15 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { AirportService } from '@/modules/airport/airport.service';
 import { CreateAirportDto } from '@/modules/airport/dto/create-airport.dto';
 import { UpdateAirportDto } from '@/modules/airport/dto/update-airport.dto';
+import { Public } from '@/decorator/public-decorator';
+import { AirportQueryDto } from '@/modules/airport/dto/fetch-airport.dto';
 
+@Public()
 @Controller('airport')
 export class AirportController {
   constructor(private readonly airportService: AirportService) {}
@@ -21,8 +25,8 @@ export class AirportController {
   }
 
   @Get()
-  findAll() {
-    return this.airportService.findAll();
+  findAll(@Query() query: AirportQueryDto) {
+    return this.airportService.findAll(query);
   }
 
   @Get(':code')

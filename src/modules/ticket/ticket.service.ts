@@ -143,16 +143,16 @@ export class TicketService {
     try {
       // Get all cancelled tickets for this booking
       const tickets = await this.prisma.tickets.findMany({
-        where: { 
+        where: {
           booking: { booking_number: bookingNumber },
-          status: 'CANCELLED'
+          status: 'CANCELLED',
         },
         include: {
           passenger: true,
           booking: {
-            include: { booking_flights: true }
-          }
-        }
+            include: { booking_flights: true },
+          },
+        },
       });
 
       await this.mailerService.sendMail({
@@ -168,11 +168,11 @@ export class TicketService {
             year: 'numeric',
             timeZone: 'UTC',
           }),
-          tickets: tickets.map(ticket => ({
+          tickets: tickets.map((ticket) => ({
             ticketNumber: ticket.ticket_number,
             passengerName: `${ticket.passenger.first_name} ${ticket.passenger.last_name}`,
-            flightId: ticket.flight_id
-          }))
+            flightId: ticket.flight_id,
+          })),
         },
       });
     } catch (err) {

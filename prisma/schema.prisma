@@ -71,6 +71,7 @@ model user {
   role        Role?      @default(USER)
   isActive    Boolean    @default(false)
   bookings    bookings[]
+  news        news[]
 }
 
 model bookings {
@@ -135,6 +136,21 @@ model tickets {
   @@unique([booking_id, passenger_id, flight_id], map: "unique_booking_passenger_flight")
 }
 
+model news {
+  id         Int          @id @default(autoincrement())
+  title      String       @db.VarChar
+  content    String
+  category   NewsCategory
+  created_at DateTime?    @default(now()) @db.Timestamp(6)
+  updated_at DateTime?    @default(now()) @db.Timestamp(6)
+  admin_id   Int
+  thumbnail  String       @db.VarChar
+  subtitle   String?      @db.VarChar(255)
+  user       user         @relation(fields: [admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_admin_id")
+
+  @@index([category], map: "idx_news_category")
+}
+
 enum Role {
   USER
   ADMIN
@@ -143,4 +159,10 @@ enum Role {
 enum TicketStatus {
   CONFIRMED
   CANCELLED
+}
+
+enum NewsCategory {
+  NEWS
+  PROMOTION
+  ANNOUNCEMENT
 }
