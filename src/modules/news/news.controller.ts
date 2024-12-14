@@ -12,16 +12,18 @@ import { PaginationDto } from '@/common/dto/pagination.dto';
 import { CreateNewsDto } from '@/modules/news/dto/create-news.dto';
 import { NewsCategory } from '@prisma/client';
 import { Roles } from '@/auth/role/role.decorator';
+import { Public } from '@/decorator/public-decorator';
 import { Role } from '@/common/enums/role.enum';
 import { RoleGuard } from '@/auth/role/role.guard';
 
-@UseGuards(RoleGuard)
-@Roles(Role.ADMIN)
+// @UseGuards(RoleGuard)
+// @Roles(Role.ADMIN)
 @Controller('news')
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}
 
   @Get()
+  @Public()
   async getNews(
     @Query() paginationDto: PaginationDto,
     @Query('category') category?: NewsCategory,
