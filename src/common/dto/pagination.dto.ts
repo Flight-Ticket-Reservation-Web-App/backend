@@ -16,7 +16,7 @@ export class PaginationDto {
   @Type(() => Number)
   @IsNumber()
   @Min(1, { message: 'Limit must be at least 1' })
-  limit?: number = 20;
+  limit?: number = 100;
 
   @IsOptional()
   @IsString()
