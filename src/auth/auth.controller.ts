@@ -12,6 +12,7 @@ import { LocalAuthGuard } from '@/auth/passport/local-auth.guard';
 import { Public } from '@/decorator/public-decorator';
 import { CodeAuthDto, CreateAuthDto } from '@/auth/dto/create-auth.dto';
 import { ChangePassAuthDto, UpdateAuthDto } from '@/auth/dto/update-auth.dto';
+import { CheckAdminEmailDto } from './dto/check-admin.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -63,5 +64,11 @@ export class AuthController {
   @Public()
   async changePassword(@Body() data: ChangePassAuthDto) {
     return this.authService.changePassword(data);
+  }
+
+  @Post('checkAdminEmail')
+  @Public()
+  async checkAdminEmail(@Body() checkAdminEmailDto: CheckAdminEmailDto) {
+    return this.authService.checkAdminEmail(checkAdminEmailDto.email);
   }
 }

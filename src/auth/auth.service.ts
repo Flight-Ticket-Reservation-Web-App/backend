@@ -81,4 +81,12 @@ export class AuthService {
   changePassword = async (data: ChangePassAuthDto) => {
     return await this.usersService.handleChangePassword(data);
   };
+
+  async checkAdminEmail(email: string) {
+    const admin = await this.usersService.findByEmail(email);
+    if (!admin || admin.role !== Role.ADMIN) {
+      return { isAdmin: false };
+    }
+    return { isAdmin: true };
+  }
 }
