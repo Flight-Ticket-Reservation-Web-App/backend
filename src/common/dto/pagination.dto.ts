@@ -20,11 +20,11 @@ export class PaginationDto {
 
   @IsOptional()
   @IsString()
-  sortBy?: string;
+  sortBy?: string = 'updated_at';
 
   @IsOptional()
   @IsEnum(['asc', 'desc'], {
     message: 'sortOrder must be "asc" or "desc"',
   })
-  sortOrder?: string = 'asc';
+  sortOrder?: string = 'desc';
 }
