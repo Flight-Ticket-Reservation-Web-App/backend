@@ -1,6 +1,7 @@
-import { Controller, Get, Query, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Query, ValidationPipe, Param } from '@nestjs/common';
 import { TicketService } from './ticket.service';
 import { CheckFlightStatusDto } from './dto/check-flight-status.dto';
+import { TicketFlightDetailsDto } from './dto/ticket-flight-details.dto';
 import { Public } from '@/decorator/public-decorator';
 
 @Controller('tickets')
@@ -15,5 +16,12 @@ export class TicketController {
     return this.ticketService.checkFlightStatus(
       checkFlightStatusDto.ticketNumber,
     );
+  }
+
+  @Get(':ticketNumber/flight-details')
+  async getFlightDetails(
+    @Param('ticketNumber') ticketNumber: string,
+  ): Promise<TicketFlightDetailsDto> {
+    return this.ticketService.getFlightDetailsByTicket(ticketNumber);
   }
 }

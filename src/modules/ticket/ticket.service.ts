@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { MailerService } from '@nestjs-modules/mailer';
 import { FlightStatusResponseDto } from '@/modules/ticket/dto/flight-status-response.dto';
 import { FlightStatus } from '@/modules/ticket/dto/flight-status-response.dto';
+import { TicketFlightDetailsDto } from './dto/ticket-flight-details.dto';
 
 @Injectable()
 export class TicketService {
@@ -249,6 +250,118 @@ export class TicketService {
         flight.delay_duration > 0 ? flight.delay_duration : undefined,
       gate: ticket.gate,
     };
+  }
+
+  async getFlightDetailsByTicket(
+    ticketNumber: string,
+  ): Promise<TicketFlightDetailsDto> {
+    // First find the basic ticket
+    const basicTicket = await this.prisma.tickets.findUnique({
+      where: { ticket_number: ticketNumber },
+    });
+
+    if (!basicTicket) {
+      throw new NotFoundException(`Ticket ${ticketNumber} not found`);
+    }
+
+    // Then get the full ticket details with all relations
+    const ticketDetails = await this.prisma.tickets.findUnique({
+      where: { ticket_number: ticketNumber },
+      include: {
+        passenger: {
+          select: {
+            first_name: true,
+            last_name: true,
+          },
+        },
+        booking: {
+          select: {
+            cabin_class: true,
+            booking_flights: {
+              where: {
+                flight_id: basicTicket.flight_id,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Get flight details based on flight_id prefix
+    const flightId = basicTicket.flight_id;
+    const prefix = flightId.charAt(0).toUpperCase();
+    const numericId = flightId.slice(1);
+
+    let flightDetails;
+    if (prefix === 'D') {
+      flightDetails = await this.prisma.domestic_flights.findUnique({
+        where: { id: `D${numericId}` },
+      });
+    } else if (prefix === 'I') {
+      flightDetails = await this.prisma.international_flights.findUnique({
+        where: { id: `I${numericId}` },
+      });
+    }
+
+    if (!flightDetails) {
+      throw new NotFoundException(`Flight ${flightId} not found`);
+    }
+
+    const bookingFlight = ticketDetails.booking.booking_flights[0];
+    const flightDate = bookingFlight.flight_date;
+
+    // Create a new Date object combining flight date with departure time
+    const departDateTime = new Date(flightDate);
+    departDateTime.setUTCHours(flightDetails.depart_time.getUTCHours());
+    departDateTime.setUTCMinutes(flightDetails.depart_time.getUTCMinutes());
+
+    // Calculate arrival time based on departure time and duration
+    const arrivalDateTime = this.calculateArrivalTime(departDateTime, flightDetails.duration);
+
+    return {
+      ticketNumber: ticketDetails.ticket_number,
+      flightId: flightId,
+      airline: flightDetails.airline,
+      flightNo: flightDetails.flight_no,
+      origin: flightDetails.origin,
+      destination: flightDetails.destination,
+      departDate: departDateTime,
+      departTime: this.formatTimeOnly(departDateTime),
+      arrivalTime: this.formatTimeOnly(arrivalDateTime),
+      duration: flightDetails.duration, 
+      gate: flightDetails.gate,
+      status: this.determineFlightStatus(flightDetails.delay_duration),
+      delayDuration: flightDetails.delay_duration || undefined,
+      passengerName: `${ticketDetails.passenger.first_name} ${ticketDetails.passenger.last_name}`,
+      seatNumber: ticketDetails.seat_number,
+      cabinClass: ticketDetails.booking.cabin_class,
+    };
+  }
+
+  private formatTimeOnly(date: Date): string {
+    // Format time as HH:mm in 24-hour format, preserving the original hours
+    return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
+  }
+
+  private calculateArrivalTime(departTime: Date, durationMinutes: number): Date {
+    // Create a new date object to avoid modifying the original
+    const arrivalTime = new Date(departTime);
+    
+    // Calculate hours and minutes from duration
+    const hoursToAdd = Math.floor(durationMinutes / 60);
+    const minutesToAdd = durationMinutes % 60;
+    
+    // Add hours and minutes
+    arrivalTime.setUTCHours(arrivalTime.getUTCHours() + hoursToAdd);
+    arrivalTime.setUTCMinutes(arrivalTime.getUTCMinutes() + minutesToAdd);
+    
+    return arrivalTime;
+  }
+
+  private determineFlightStatus(delayDuration?: number): FlightStatus {
+    return delayDuration && delayDuration > 0
+      ? FlightStatus.DELAYED
+      : FlightStatus.ON_TIME;
   }
 
   private async assignSeatNumber(

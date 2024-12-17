@@ -14,6 +14,10 @@ export class BookingHistoryPassengerDto {
   type: PassengerType;
   gender: string;
   passportNumber?: string;
+  tickets: {
+    ticketNumber: string;
+    flightId: string;
+  }[];
 }
 
 export class BookingHistoryDto {

@@ -93,7 +93,7 @@ export class FlightService {
       const departTimestamp = new Date(departDate).getTime();
       const returnTimestamp = new Date(returnDate).getTime();
 
-      if (returnTimestamp <= departTimestamp) {
+      if (returnTimestamp < departTimestamp) {
         throw new BadRequestException(
           'Return date must be after departure date',
         );

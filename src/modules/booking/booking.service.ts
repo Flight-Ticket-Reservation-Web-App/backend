@@ -354,17 +354,15 @@ export class BookingService {
   }
 
   //
-  
+
   async getBookingHistory(
     userId: number,
     query: BookingHistoryQueryDto,
   ): Promise<{ data: BookingHistoryDto[]; total: number; pages: number }> {
     const { status, sortOrder = SortOrder.DESC, page = 1, limit = 10 } = query;
 
-    // Calculate skip for pagination
     const skip = (page - 1) * limit;
 
-    // Get total count for pagination
     const total = await this.prisma.bookings.count({
       where: {
         user_id: userId,
@@ -372,7 +370,6 @@ export class BookingService {
       },
     });
 
-    // Calculate total pages
     const pages = Math.ceil(total / limit);
 
     const bookings = await this.prisma.bookings.findMany({
@@ -382,7 +379,16 @@ export class BookingService {
       },
       include: {
         booking_flights: true,
-        booking_passengers: true,
+        booking_passengers: {
+          include: {
+            tickets: {
+              select: {
+                ticket_number: true,
+                flight_id: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         created_at: sortOrder,
@@ -412,6 +418,10 @@ export class BookingService {
         type: passenger.type as PassengerType,
         gender: passenger.gender,
         passportNumber: passenger.passport_number || undefined,
+        tickets: passenger.tickets.map((ticket) => ({
+          ticketNumber: ticket.ticket_number,
+          flightId: ticket.flight_id,
+        })),
       })),
     }));
 
@@ -429,7 +439,16 @@ export class BookingService {
       },
       include: {
         booking_flights: true,
-        booking_passengers: true,
+        booking_passengers: {
+          include: {
+            tickets: {
+              select: {
+                ticket_number: true,
+                flight_id: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -458,6 +477,10 @@ export class BookingService {
         type: passenger.type as PassengerType,
         gender: passenger.gender,
         passportNumber: passenger.passport_number || undefined,
+        tickets: passenger.tickets.map((ticket) => ({
+          ticketNumber: ticket.ticket_number,
+          flightId: ticket.flight_id,
+        })),
       })),
     };
   }
@@ -515,7 +538,16 @@ export class BookingService {
         },
         include: {
           booking_flights: true,
-          booking_passengers: true,
+          booking_passengers: {
+            include: {
+              tickets: {
+                select: {
+                  ticket_number: true,
+                  flight_id: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -580,6 +612,10 @@ export class BookingService {
           type: passenger.type as PassengerType,
           gender: passenger.gender,
           passportNumber: passenger.passport_number || undefined,
+          tickets: passenger.tickets.map((ticket) => ({
+            ticketNumber: ticket.ticket_number,
+            flightId: ticket.flight_id,
+          })),
         })),
       };
     });
