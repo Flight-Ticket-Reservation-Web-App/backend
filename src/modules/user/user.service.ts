@@ -174,31 +174,48 @@ export class UserService {
     if (user) {
       throw new ConflictException('User with this email already exists');
     }
+
     const hashPassWord = await hashPasswordHelper(registerDto.password);
     const codeId = uuidv4();
+    const isAdmin = registerDto.role === 'ADMIN';
+
     const newUser = await this.prisma.user.create({
       data: {
         email: registerDto.username,
         password: hashPassWord,
         firstName: registerDto.firstName,
         lastName: registerDto.lastName,
+        role: isAdmin ? Role.ADMIN : Role.USER,
         isActive: false,
-        codeId: codeId,
-        codeExpired: dayjs().add(5, 'minutes').toISOString(),
-      },
-    });
-    // send email
-    this.mailerService.sendMail({
-      to: newUser.email,
-      subject: 'WELCOME TO QAIRLINE, PLEASE ACTIVATE YOUR ACCOUNT',
-      template: 'register',
-      context: {
-        name: `${newUser.firstName} ${newUser.lastName}`,
-        activationCode: codeId,
+        codeId: isAdmin ? null : codeId,
+        codeExpired: isAdmin ? null : dayjs().add(5, 'minutes').toISOString(),
       },
     });
 
-    return { userId: newUser.id };
+    if (isAdmin) {
+      this.mailerService.sendMail({
+        to: newUser.email,
+        subject: 'YOUR QAIRLINE ADMIN ACCOUNT CREDENTIALS',
+        template: 'admin-register',
+        context: {
+          name: `${newUser.firstName} ${newUser.lastName}`,
+          username: newUser.email,
+          password: registerDto.password,
+        },
+      });
+    } else {
+      this.mailerService.sendMail({
+        to: newUser.email,
+        subject: 'WELCOME TO QAIRLINE, PLEASE ACTIVATE YOUR ACCOUNT',
+        template: 'register',
+        context: {
+          name: `${newUser.firstName} ${newUser.lastName}`,
+          activationCode: codeId,
+        },
+      });
+    }
+
+    return { userId: newUser.id, role: newUser.role };
   }
 
   async findByEmail(email: string) {
