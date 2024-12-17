@@ -2,6 +2,7 @@ import { IsEnum, IsInt, IsOptional, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { TicketStatus } from '@prisma/client';
 import { SortOrder } from '@/common/enums/sort-order.enum';
+import { TripType } from '@/common/enums';
 
 export class BookingHistoryQueryDto {
   @IsOptional()
@@ -23,4 +24,8 @@ export class BookingHistoryQueryDto {
   @IsInt()
   @Min(1)
   limit?: number = 10;
+
+  @IsOptional()
+  @IsEnum(TripType)
+  tripType?: TripType;
 }

@@ -359,24 +359,24 @@ export class BookingService {
     userId: number,
     query: BookingHistoryQueryDto,
   ): Promise<{ data: BookingHistoryDto[]; total: number; pages: number }> {
-    const { status, sortOrder = SortOrder.DESC, page = 1, limit = 10 } = query;
+    const { status, tripType, sortOrder = SortOrder.DESC, page = 1, limit = 10 } = query;
 
     const skip = (page - 1) * limit;
 
+    const whereClause = {
+      user_id: userId,
+      ...(status && { status }),
+      ...(tripType && { trip_type: tripType }),
+    };
+
     const total = await this.prisma.bookings.count({
-      where: {
-        user_id: userId,
-        ...(status && { status }),
-      },
+      where: whereClause,
     });
 
     const pages = Math.ceil(total / limit);
 
     const bookings = await this.prisma.bookings.findMany({
-      where: {
-        user_id: userId,
-        ...(status && { status }),
-      },
+      where: whereClause,
       include: {
         booking_flights: true,
         booking_passengers: {
