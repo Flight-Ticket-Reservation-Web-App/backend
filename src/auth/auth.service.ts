@@ -54,11 +54,11 @@ export class AuthService {
   async login(user: any) {
     const payload = { username: user.email, sub: user.id };
     return {
-      user: {
-        email: user.email,
-        username: user.firstName,
-        isVerify: user.isActive,
-      },
+      id: user.id,
+      email: user.email,
+      username: user.firstName,
+      isVerify: user.isActive,
+      role: user.role,
       access_token: this.jwtService.sign(payload),
     };
   }
@@ -81,4 +81,12 @@ export class AuthService {
   changePassword = async (data: ChangePassAuthDto) => {
     return await this.usersService.handleChangePassword(data);
   };
+
+  async checkAdminEmail(email: string) {
+    const admin = await this.usersService.findByEmail(email);
+    if (!admin || admin.role !== Role.ADMIN) {
+      return { isAdmin: false };
+    }
+    return { isAdmin: true };
+  }
 }
