@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateUserDto } from '@/modules/user/dto/create-user.dto';
 import { Role, user as User } from '@prisma/client';
-import { hashPasswordHelper } from '@/utils/helper';
+import { hashPasswordHelper, comparePasswordHelper } from '@/utils/helper';
 import { CodeAuthDto, CreateAuthDto } from '@/auth/dto/create-auth.dto';
 import { v4 as uuidv4 } from 'uuid';
 import dayjs from 'dayjs';
@@ -35,6 +35,12 @@ export class UserService {
     if (dayjs(user.codeExpired).isBefore(currentTime)) {
       throw new ConflictException('Activation code has expired');
     }
+
+    const isSamePassword = await comparePasswordHelper(newPassword, user.password);
+    if (isSamePassword) {
+      throw new BadRequestException('New password must be different');
+    }
+
     const newUserPassword = await hashPasswordHelper(newPassword);
     await this.prisma.user.update({
       where: { email },
