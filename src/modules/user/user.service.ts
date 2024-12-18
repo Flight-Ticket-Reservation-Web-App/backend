@@ -40,7 +40,7 @@ export class UserService {
       where: { email },
       data: { password: newUserPassword },
     });
-    return 'Password updated successfully';
+    return { message: 'Password updated successfully' };
   }
   async handleUpdatePassword(data: UpdateAuthDto) {
     const { email, id } = data;
@@ -76,11 +76,10 @@ export class UserService {
       },
     });
 
-    // Send an email with the new activation code
     this.mailerService.sendMail({
       to: user.email,
-      subject: 'CHANGE YOUR MEMBERSHIP PASSWORD',
-      template: 'register',
+      subject: 'RESET YOUR QAIRLINE PASSWORD',
+      template: 'forgot-password',
       context: {
         name: `${user.firstName} ${user.lastName}`,
         activationCode: codeId,
