@@ -16,15 +16,15 @@ export class PaginationDto {
   @Type(() => Number)
   @IsNumber()
   @Min(1, { message: 'Limit must be at least 1' })
-  limit?: number = 20;
+  limit?: number = 100;
 
   @IsOptional()
   @IsString()
-  sortBy?: string;
+  sortBy?: string = 'updated_at';
 
   @IsOptional()
   @IsEnum(['asc', 'desc'], {
     message: 'sortOrder must be "asc" or "desc"',
   })
-  sortOrder?: string = 'asc';
+  sortOrder?: string = 'desc';
 }
