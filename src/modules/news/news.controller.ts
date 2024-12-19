@@ -19,6 +19,7 @@ import { Roles } from '@/auth/role/role.decorator';
 import { Role } from '@/common/enums/role.enum';
 import { RoleGuard } from '@/auth/role/role.guard';
 import { UpdateNewsDto } from './dto/update-news.dto';
+import { Public } from '@/decorator/public-decorator';
 
 @UseGuards(RoleGuard)
 @Roles(Role.ADMIN)
@@ -26,6 +27,7 @@ import { UpdateNewsDto } from './dto/update-news.dto';
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}
 
+  @Public()
   @Get()
   async getNews(
     @Query() paginationDto: PaginationDto,
