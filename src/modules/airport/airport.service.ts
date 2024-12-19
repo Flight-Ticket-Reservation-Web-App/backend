@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateAirportDto } from '@/modules/airport/dto/create-airport.dto';
 import { UpdateAirportDto } from '@/modules/airport/dto/update-airport.dto';
@@ -11,9 +11,16 @@ export class AirportService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createAirportDto: CreateAirportDto) {
-    return await this.prisma.airports.create({
-      data: createAirportDto,
-    });
+    try {
+      return await this.prisma.airports.create({
+        data: createAirportDto
+      });
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new ConflictException('Airport code already exists');
+      }
+      throw error;
+    }
   }
 
   async findAll(query: AirportQueryDto) {
@@ -46,12 +53,36 @@ export class AirportService {
   }
 
   async update(code: string, updateAirportDto: UpdateAirportDto) {
-    return await this.prisma.airports.update({
-      where: { code },
-      data: updateAirportDto,
-    });
+    try {
+      const airport = await this.prisma.airports.findUnique({
+        where: { code }
+      });
+  
+      if (!airport) {
+        throw new NotFoundException(`Airport with code ${code} not found`);
+      }
+  
+      if (updateAirportDto.code && updateAirportDto.code !== code) {
+        const existingAirport = await this.prisma.airports.findUnique({
+          where: { code: updateAirportDto.code }
+        });
+  
+        if (existingAirport) {
+          throw new ConflictException(`Airport with code ${updateAirportDto.code} already exists`);
+        }
+      }
+  
+      return await this.prisma.airports.update({
+        where: { code },
+        data: updateAirportDto
+      });
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new ConflictException('Airport code already exists');
+      }
+      throw error;
+    }
   }
-
   async remove(code: string) {
     return await this.prisma.airports.delete({
       where: { code },
