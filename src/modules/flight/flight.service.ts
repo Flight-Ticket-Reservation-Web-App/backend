@@ -2,9 +2,15 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';
 import { FlightSearchResponseDto } from '@/modules/flight/dto/flight-search-response.dto';
-import { domestic_flights, international_flights } from '@prisma/client';
+import {
+  domestic_flights,
+  international_flights,
+  Prisma,
+} from '@prisma/client';
 import { CabinClass, TripType } from '@/common/enums';
-
+import dayjs from 'dayjs';
+import { PaginationDto } from '@/common/dto/pagination.dto';
+import { buildQueryOptions } from '@/utils/query';
 @Injectable()
 export class FlightService {
   constructor(private readonly prisma: PrismaService) {}
@@ -231,5 +237,104 @@ export class FlightService {
     const arrivalDate = new Date(departDate);
     arrivalDate.setMinutes(arrivalDate.getMinutes() + duration);
     return arrivalDate;
+  }
+
+  async getBookings(paginationDto: PaginationDto) {
+    // Define searchable fields for the `search` parameter
+    const searchFields = [
+      'flight_no',
+      'airline',
+      'origin',
+      'destination',
+      'booking.booking_passengers.first_name', // Adjust as needed for passengers
+    ];
+
+    // Build query options
+    const { where, orderBy, skip, take } = buildQueryOptions<
+      Prisma.booking_flightsWhereInput,
+      Prisma.booking_flightsOrderByWithRelationInput
+    >(paginationDto, searchFields);
+
+    // Fetch booking flights with the built query options
+    const bookingFlights = await this.prisma.booking_flights.findMany({
+      where,
+      orderBy,
+      skip,
+      take,
+      include: {
+        booking: {
+          select: {
+            id: true,
+            booking_passengers: true, // Fetch passengers for total count
+          },
+        },
+      },
+    });
+
+    const enrichedFlights = await Promise.all(
+      bookingFlights.map(async (flight) => {
+        let flightDetails;
+
+        // Fetch flight details from domestic or international table
+        if (flight.flight_type === 'DOMESTIC') {
+          flightDetails = await this.prisma.domestic_flights.findUnique({
+            where: { id: flight.flight_id },
+            select: {
+              flight_no: true,
+              airline: true,
+              origin: true,
+              destination: true,
+              depart_time: true,
+              arrival_time: true,
+            },
+          });
+        } else if (flight.flight_type === 'INTERNATIONAL') {
+          flightDetails = await this.prisma.international_flights.findUnique({
+            where: { id: flight.flight_id },
+            select: {
+              flight_no: true,
+              airline: true,
+              origin: true,
+              destination: true,
+              depart_time: true,
+              arrival_time: true,
+            },
+          });
+        }
+
+        if (!flightDetails) {
+          return null; // Handle missing flight details gracefully
+        }
+
+        // Calculate total passengers for this flight
+        const totalPassengers = flight.booking.booking_passengers.length;
+
+        // Format time for departure and arrival in 12-hour format with AM/PM
+        const departure = dayjs(flightDetails.depart_time).format('hh:mm A');
+        const arrival = dayjs(flightDetails.arrival_time).format('hh:mm A');
+
+        // Format date as dd-mm-yy
+        const date = dayjs(flight.flight_date).format('DD-MM-YY');
+
+        return {
+          flight_no: flightDetails.flight_no,
+          airline: flightDetails.airline,
+          route: `${flightDetails.origin} - ${flightDetails.destination}`,
+          departure,
+          arrival,
+          date,
+          totalPassengers,
+        };
+      }),
+    );
+
+    return {
+      data: enrichedFlights.filter((flight) => flight !== null), // Exclude null results
+      meta: {
+        currentPage: paginationDto.page,
+        total: await this.prisma.booking_flights.count({ where }),
+        limit: paginationDto.limit,
+      },
+    };
   }
 }
