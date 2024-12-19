@@ -21,8 +21,6 @@ import { RoleGuard } from '@/auth/role/role.guard';
 import { UpdateNewsDto } from './dto/update-news.dto';
 import { Public } from '@/decorator/public-decorator';
 
-@UseGuards(RoleGuard)
-@Roles(Role.ADMIN)
 @Controller('news')
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}
@@ -39,17 +37,23 @@ export class NewsController {
     });
   }
 
+  @UseGuards(RoleGuard)
+  @Roles(Role.ADMIN)
   @Post()
   async createNews(@Body() createNewsDto: CreateNewsDto, @Req() req) {
     const userRole = req.user.role;
     return this.newsService.createNews(createNewsDto, userRole);
   }
 
+  @UseGuards(RoleGuard)
+  @Roles(Role.ADMIN)
   @Delete(':id')
   async deleteNews(@Param('id', ParseIntPipe) id: number) {
     return this.newsService.deleteNews(id);
   }
 
+  @UseGuards(RoleGuard)
+  @Roles(Role.ADMIN)
   @Patch(':id')
   async updateNews(
     @Param('id', ParseIntPipe) id: number,
