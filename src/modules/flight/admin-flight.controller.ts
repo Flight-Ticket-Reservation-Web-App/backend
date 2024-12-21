@@ -82,3 +82,4 @@ export class AdminFlightController {
     return this.flightService.deleteInternational(id);
   }
 }
+

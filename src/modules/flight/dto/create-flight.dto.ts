@@ -3,38 +3,76 @@ import {
   IsString,
   IsNotEmpty,
   IsNumber,
-  IsISO8601,
   IsEnum,
   Matches,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateFlightDto {
   @IsString()
   @IsNotEmpty()
-  aircode: string; // Aircode from the airport table
+  @Transform(({ value }) => value.trim().toUpperCase())
+  aircode: string;
 
   @IsString()
   @IsNotEmpty()
   @Matches(/^\d+$/, {
     message: 'Flight number suffix must be numeric (e.g., 746).',
   })
-  flightNoSuffix: string; // Numeric part provided by the user
+  @Transform(({ value }) => value.trim())
+  flightNoSuffix: string;
 
   @IsString()
   @IsNotEmpty()
-  origin: string; // Must exist in the airport table
+  @Transform(({ value }) => value.trim().toUpperCase())
+  origin: string;
 
   @IsString()
   @IsNotEmpty()
-  destination: string; // Must exist in the airport table
+  @Transform(({ value }) => value.trim().toUpperCase())
+  destination: string;
 
-  @IsISO8601()
+  @IsString()
   @IsNotEmpty()
-  departureTime: string;
+  @Transform(({ value }) => {
+    if (/^\d{2}:\d{2}$/.test(value)) {
+      // If the input is in HH:mm format
+      const [hours, minutes] = value.split(':').map(Number);
+      const defaultDate = '1970-01-01';
+      return `${defaultDate}T${String(hours).padStart(2, '0')}:${String(
+        minutes,
+      ).padStart(2, '0')}:00Z`;
+    }
+    // If already in ISO-8601 format, return as is
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)) {
+      return value;
+    }
+    throw new Error(
+      `Invalid time format for departure_time. Expected HH:mm or ISO-8601, received: ${value}`,
+    );
+  })
+  depart_time: string;
 
-  @IsISO8601()
+  @IsString()
   @IsNotEmpty()
-  arrivalTime: string;
+  @Transform(({ value }) => {
+    if (/^\d{2}:\d{2}$/.test(value)) {
+      // If the input is in HH:mm format
+      const [hours, minutes] = value.split(':').map(Number);
+      const defaultDate = '1970-01-01';
+      return `${defaultDate}T${String(hours).padStart(2, '0')}:${String(
+        minutes,
+      ).padStart(2, '0')}:00Z`;
+    }
+    // If already in ISO-8601 format, return as is
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)) {
+      return value;
+    }
+    throw new Error(
+      `Invalid time format for arrival_time. Expected HH:mm or ISO-8601, received: ${value}`,
+    );
+  })
+  arrival_time: string;
 
   @IsEnum(flight_status)
   @IsNotEmpty()
@@ -42,9 +80,11 @@ export class CreateFlightDto {
 
   @IsNumber()
   @IsNotEmpty()
-  economyFare: number;
+  @Transform(({ value }) => parseFloat(value))
+  economy_fare: number;
 
   @IsNumber()
   @IsNotEmpty()
-  businessFare: number;
+  @Transform(({ value }) => parseFloat(value))
+  business_fare: number;
 }
