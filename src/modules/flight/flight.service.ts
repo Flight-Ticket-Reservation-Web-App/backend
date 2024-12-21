@@ -304,7 +304,6 @@ export class FlightService {
       },
     });
 
-    // Enrich booking flights with flight details
     const enrichedFlights = await Promise.all(
       allBookingFlights.map(async (flight) => {
         let flightDetails;
@@ -314,7 +313,7 @@ export class FlightService {
             where: { id: flight.flight_id },
             select: {
               flight_no: true,
-              airlines: true,
+              airlines: true, // Assuming airlines is a string for domestic flights
               origin: true,
               destination: true,
               depart_time: true,
@@ -322,25 +321,40 @@ export class FlightService {
             },
           });
         } else if (flight.flight_type === 'INTERNATIONAL') {
-          flightDetails = await this.prisma.international_flights.findUnique({
-            where: { id: flight.flight_id },
-            select: {
-              flight_no: true,
-              airlines: true,
-              origin: true,
-              destination: true,
-              depart_time: true,
-              arrival_time: true,
-            },
-          });
+          const internationalFlightDetails =
+            await this.prisma.international_flights.findUnique({
+              where: { id: flight.flight_id },
+              select: {
+                flight_no: true,
+                origin: true,
+                destination: true,
+                depart_time: true,
+                arrival_time: true,
+                airlines: {
+                  select: {
+                    airline_name: true, // Retrieve the airline_name
+                  },
+                },
+              },
+            });
+
+          if (internationalFlightDetails) {
+            const { airlines, ...rest } = internationalFlightDetails; // Destructure airlines
+            flightDetails = {
+              ...rest,
+              airline: airlines?.airline_name, // Extract only airline_name
+            };
+          }
         }
 
         if (!flightDetails) return null;
 
         const totalPassengers = flight.booking.booking_passengers.length;
 
+        // Prepare the final flight details with only the airline_name
         return {
           ...flightDetails,
+          airline: flightDetails.airline, // Include only the airline_name here
           route: `${flightDetails.origin} - ${flightDetails.destination}`,
           departure: dayjs(flightDetails.depart_time).format('hh:mm A'),
           arrival: dayjs(flightDetails.arrival_time).format('hh:mm A'),
