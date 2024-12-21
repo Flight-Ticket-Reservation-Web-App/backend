@@ -42,10 +42,10 @@ export class NewsService {
     }
 
     const { adminId, ...newsData } = createNewsDto;
-    
+
     try {
       const admin = await this.prisma.user.findUnique({
-        where: { id: adminId }
+        where: { id: adminId },
       });
 
       if (!admin) {
@@ -57,18 +57,17 @@ export class NewsService {
           ...newsData,
           user: {
             connect: {
-              id: adminId
-            }
-          }
+              id: adminId,
+            },
+          },
         },
         include: {
-          user: true
-        }
+          user: true,
+        },
       });
-
     } catch (error) {
       console.error('News creation error:', error);
-      
+
       if (error instanceof NotFoundException) {
         throw error;
       }
