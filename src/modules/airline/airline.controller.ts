@@ -8,6 +8,10 @@ import {
   Delete,
   ValidationPipe,
   Query,
+  ConflictException,
+  HttpException,
+  NotFoundException,
+  HttpStatus,
 } from '@nestjs/common';
 import { AirlineService } from './airline.service';
 import { CreateAirlineDto } from './dto/create-airline.dto';
@@ -58,7 +62,16 @@ export class AirlineController {
     try {
       return await this.airlineService.remove(id);
     } catch (error) {
-      return { error: error.message };
+      if (error instanceof ConflictException) {
+        throw new HttpException(error.message, HttpStatus.CONFLICT);
+      } else if (error instanceof NotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      } else {
+        throw new HttpException(
+          error.message,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
     }
   }
 }

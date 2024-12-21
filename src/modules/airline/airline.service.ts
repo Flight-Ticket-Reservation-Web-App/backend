@@ -88,7 +88,6 @@ export class AirlineService {
       await this.prisma.airlines.delete({
         where: { aircode: id },
       });
-
       return { message: 'Airline deleted successfully' };
     } catch (error) {
       if (error instanceof ConflictException) {
