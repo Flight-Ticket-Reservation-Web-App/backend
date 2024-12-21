@@ -4,6 +4,8 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { CodeAuthDto, CreateAuthDto } from '@/auth/dto/create-auth.dto';
 import { ChangePassAuthDto, UpdateAuthDto } from '@/auth/dto/update-auth.dto';
+import { CurrentUser } from '@/common/dto/currentUser';
+import { Role } from '@/common/enums';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +13,18 @@ export class AuthService {
     private usersService: UserService,
     private jwtService: JwtService,
   ) {}
+
+  async validateJwtUser(id: number): Promise<any> {
+    const user = await this.usersService.findById(id);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const currentUser: CurrentUser = {
+      id: user.id,
+      role: user.role as unknown as Role,
+    };
+    return currentUser;
+  }
 
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(username);
@@ -40,11 +54,11 @@ export class AuthService {
   async login(user: any) {
     const payload = { username: user.email, sub: user.id };
     return {
-      user: {
-        email: user.email,
-        username: user.firstName,
-        isVerify: user.isActive,
-      },
+      id: user.id,
+      email: user.email,
+      username: user.firstName,
+      isVerify: user.isActive,
+      role: user.role,
       access_token: this.jwtService.sign(payload),
     };
   }
@@ -67,4 +81,12 @@ export class AuthService {
   changePassword = async (data: ChangePassAuthDto) => {
     return await this.usersService.handleChangePassword(data);
   };
+
+  async checkAdminEmail(email: string) {
+    const admin = await this.usersService.findByEmail(email);
+    if (!admin || admin.role !== Role.ADMIN) {
+      return { isAdmin: false };
+    }
+    return { isAdmin: true };
+  }
 }

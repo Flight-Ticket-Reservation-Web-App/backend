@@ -11,15 +11,12 @@ import { AuthService } from '@/auth/auth.service';
 import { LocalAuthGuard } from '@/auth/passport/local-auth.guard';
 import { Public } from '@/decorator/public-decorator';
 import { CodeAuthDto, CreateAuthDto } from '@/auth/dto/create-auth.dto';
-import { MailerService } from '@nestjs-modules/mailer';
 import { ChangePassAuthDto, UpdateAuthDto } from '@/auth/dto/update-auth.dto';
+import { CheckAdminEmailDto } from './dto/check-admin.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly mailerService: MailerService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @Public()
@@ -28,7 +25,6 @@ export class AuthController {
     return this.authService.login(req.user);
   }
 
-  //@UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;
@@ -68,5 +64,11 @@ export class AuthController {
   @Public()
   async changePassword(@Body() data: ChangePassAuthDto) {
     return this.authService.changePassword(data);
+  }
+
+  @Post('checkAdminEmail')
+  @Public()
+  async checkAdminEmail(@Body() checkAdminEmailDto: CheckAdminEmailDto) {
+    return this.authService.checkAdminEmail(checkAdminEmailDto.email);
   }
 }

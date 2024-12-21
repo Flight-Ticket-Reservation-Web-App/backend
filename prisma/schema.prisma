@@ -18,48 +18,50 @@ model domestic_flights {
   origin                   String
   destination              String
   flight_no                String
-  airline_code             String
-  airline                  String
-  depart_time              DateTime @db.Time(6)
+  depart_time              DateTime       @db.Time(6)
   depart_weekday           Int
   duration                 Int
-  arrival_time             DateTime @db.Time(6)
+  arrival_time             DateTime       @db.Time(6)
   arrival_weekday          Int
-  economy_fare             Decimal  @db.Decimal(10, 2)
-  business_fare            Decimal  @db.Decimal(10, 2)
-  first_fare               Decimal  @db.Decimal(10, 2)
+  economy_fare             Decimal        @db.Decimal(10, 2)
+  business_fare            Decimal        @db.Decimal(10, 2)
+  first_fare               Decimal        @db.Decimal(10, 2)
   economy_seats            Int
   business_seats           Int
   first_seats              Int
   available_economy_seats  Int?
   available_business_seats Int?
   available_first_seats    Int?
-  id                       String   @id @default(dbgenerated("nextval('domestic_flights_id_seq'::regclass)"))
-  delay_duration           Int      @default(0)
+  id                       String         @id @default(dbgenerated("nextval('domestic_flights_id_seq'::regclass)"))
+  aircode                  String         @db.VarChar(10)
+  delay_minutes            Int?           @default(0)
+  status                   flight_status? @default(ON_TIME)
+  airlines                 airlines       @relation(fields: [aircode], references: [aircode], onDelete: NoAction, onUpdate: NoAction, map: "fk_domestic_airline")
 }
 
 model international_flights {
   origin                   String
   destination              String
   flight_no                String
-  airline_code             String
-  airline                  String
-  id                       String   @id(map: "PK_e5243c5e47f4a5d34145a59f647") @default(dbgenerated("nextval('international_flights_index_seq'::regclass)"))
-  depart_time              DateTime @db.Time(6)
+  id                       String         @id(map: "PK_e5243c5e47f4a5d34145a59f647") @default(dbgenerated("nextval('international_flights_index_seq'::regclass)"))
+  depart_time              DateTime       @db.Time(6)
   depart_weekday           Int
   duration                 Int
-  arrival_time             DateTime @db.Time(6)
+  arrival_time             DateTime       @db.Time(6)
   arrival_weekday          Int
-  economy_fare             Decimal  @db.Decimal(10, 2)
-  business_fare            Decimal  @db.Decimal(10, 2)
-  first_fare               Decimal  @db.Decimal(10, 2)
+  economy_fare             Decimal        @db.Decimal(10, 2)
+  business_fare            Decimal        @db.Decimal(10, 2)
+  first_fare               Decimal        @db.Decimal(10, 2)
   economy_seats            Int
   business_seats           Int
   first_seats              Int
   available_economy_seats  Int?
   available_business_seats Int?
   available_first_seats    Int?
-  delay_duration           Int      @default(0)
+  aircode                  String         @db.VarChar(10)
+  delay_minutes            Int?           @default(0)
+  status                   flight_status? @default(ON_TIME)
+  airlines                 airlines       @relation(fields: [aircode], references: [aircode], onDelete: NoAction, onUpdate: NoAction, map: "fk_international_airline")
 }
 
 model user {
@@ -73,6 +75,7 @@ model user {
   role        Role?      @default(USER)
   isActive    Boolean    @default(false)
   bookings    bookings[]
+  news        news[]
 }
 
 model bookings {
@@ -137,6 +140,28 @@ model tickets {
   @@unique([booking_id, passenger_id, flight_id], map: "unique_booking_passenger_flight")
 }
 
+model news {
+  id         Int          @id @default(autoincrement())
+  title      String       @db.VarChar
+  content    String
+  category   NewsCategory
+  created_at DateTime?    @default(now()) @db.Timestamp(6)
+  updated_at DateTime?    @default(now()) @db.Timestamp(6)
+  admin_id   Int
+  thumbnail  String       @db.VarChar
+  subtitle   String?      @db.VarChar(255)
+  user       user         @relation(fields: [admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_admin_id")
+
+  @@index([category], map: "idx_news_category")
+}
+
+model airlines {
+  aircode               String                  @id @db.VarChar(10)
+  airline_name          String                  @db.VarChar(255)
+  domestic_flights      domestic_flights[]
+  international_flights international_flights[]
+}
+
 enum Role {
   USER
   ADMIN
@@ -145,4 +170,17 @@ enum Role {
 enum TicketStatus {
   CONFIRMED
   CANCELLED
+}
+
+enum NewsCategory {
+  NEWS
+  PROMOTION
+  ANNOUNCEMENT
+}
+
+enum flight_status {
+  ON_TIME
+  DELAYED
+  CANCELLED
+  SCHEDULED
 }

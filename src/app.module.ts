@@ -12,6 +12,9 @@ import { JwtAuthGuard } from '@/auth/passport/jwt-auth.guard';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { BookingModule } from '@/modules/booking/booking.module';
+import { NewsModule } from '@/modules/news/news.module';
+import { RoleGuard } from '@/auth/role/role.guard';
+import { AirlineModule } from './modules/airline/airline.module';
 import { TicketModule } from '@/modules/ticket/ticket.module';
 
 @Module({
@@ -49,6 +52,8 @@ import { TicketModule } from '@/modules/ticket/ticket.module';
     PrismaModule,
     AuthModule,
     BookingModule,
+    NewsModule,
+    AirlineModule,
     TicketModule,
   ],
   controllers: [AppController],
@@ -57,6 +62,10 @@ import { TicketModule } from '@/modules/ticket/ticket.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RoleGuard,
     },
   ],
 })

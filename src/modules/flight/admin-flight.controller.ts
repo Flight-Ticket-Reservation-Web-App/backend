@@ -9,10 +9,12 @@ import {
 } from '@nestjs/common';
 import { FlightService } from '@/modules/flight/flight.service';
 import { domestic_flights, international_flights } from '@prisma/client';
-import { Role } from '@/modules/role/role.decorator';
+import { Roles } from '@/auth/role/role.decorator';
 import { UpdateFlightDelayDto } from '@/modules/flight/dto/update-flight-delay.dto';
 import { Public } from '@/decorator/public-decorator';
+import { Role } from '@/common/enums';
 
+@Roles(Role.ADMIN)
 @Controller('admin/flights')
 @Public()
 export class AdminFlightController {
