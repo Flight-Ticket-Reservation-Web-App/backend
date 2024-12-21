@@ -46,4 +46,19 @@ export class FlightController {
   ) {
     return this.flightService.getBookings(queryParams);
   }
+
+  @Get('schedule')
+  @HttpCode(HttpStatus.OK)
+  @Public()
+  async getFlights(
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+      }),
+    )
+    queryParams: PaginationDto,
+  ) {
+    return this.flightService.getAllFlights(queryParams);
+  }
 }
