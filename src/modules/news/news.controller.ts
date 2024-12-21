@@ -20,7 +20,6 @@ import { Public } from '@/decorator/public-decorator';
 import { Role } from '@/common/enums/role.enum';
 import { RoleGuard } from '@/auth/role/role.guard';
 import { UpdateNewsDto } from './dto/update-news.dto';
-import { Public } from '@/decorator/public-decorator';
 
 @Controller('news')
 export class NewsController {
