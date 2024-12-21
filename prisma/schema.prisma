@@ -34,7 +34,7 @@ model domestic_flights {
   available_first_seats    Int?
   id                       String         @id @default(dbgenerated("nextval('domestic_flights_id_seq'::regclass)"))
   aircode                  String         @db.VarChar(10)
-  delay_minutes            Int?           @default(0)
+  delay_duration           Int?           @default(0)
   status                   flight_status? @default(ON_TIME)
   airlines                 airlines       @relation(fields: [aircode], references: [aircode], onDelete: NoAction, onUpdate: NoAction, map: "fk_domestic_airline")
 }
@@ -59,7 +59,7 @@ model international_flights {
   available_business_seats Int?
   available_first_seats    Int?
   aircode                  String         @db.VarChar(10)
-  delay_minutes            Int?           @default(0)
+  delay_duration           Int?           @default(0)
   status                   flight_status? @default(ON_TIME)
   airlines                 airlines       @relation(fields: [aircode], references: [aircode], onDelete: NoAction, onUpdate: NoAction, map: "fk_international_airline")
 }
