@@ -2,9 +2,15 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';
 import { FlightSearchResponseDto } from '@/modules/flight/dto/flight-search-response.dto';
-import { domestic_flights, international_flights } from '@prisma/client';
+import {
+  domestic_flights,
+  international_flights,
+  Prisma,
+} from '@prisma/client';
 import { CabinClass, TripType } from '@/common/enums';
-
+import dayjs from 'dayjs';
+import { PaginationDto } from '@/common/dto/pagination.dto';
+import { buildQueryOptions } from '@/utils/query';
 @Injectable()
 export class FlightService {
   constructor(private readonly prisma: PrismaService) {}
@@ -231,5 +237,375 @@ export class FlightService {
     const arrivalDate = new Date(departDate);
     arrivalDate.setMinutes(arrivalDate.getMinutes() + duration);
     return arrivalDate;
+  }
+
+  async getBookings(paginationDto: PaginationDto) {
+    const {
+      search,
+      page = 1,
+      limit = 25,
+      sortBy = 'flight_date',
+      sortOrder = 'asc',
+    } = paginationDto;
+
+    const sortField = sortBy;
+    const sortDirection = sortOrder === 'desc' ? 'desc' : 'asc';
+
+    // Build the `where` clause
+    const where: Prisma.booking_flightsWhereInput = search
+      ? {
+          OR: [
+            {
+              flight_type: 'DOMESTIC',
+              flight_id: {
+                in: await this.getFlightIdsBySearch('domestic_flights', search),
+              },
+            },
+            {
+              flight_type: 'INTERNATIONAL',
+              flight_id: {
+                in: await this.getFlightIdsBySearch(
+                  'international_flights',
+                  search,
+                ),
+              },
+            },
+            {
+              booking: {
+                booking_passengers: {
+                  some: {
+                    first_name: { contains: search, mode: 'insensitive' },
+                  },
+                },
+              },
+            },
+          ],
+        }
+      : undefined;
+
+    // Fetch all booking flights (unsorted) for enrichment
+    const allBookingFlights = await this.prisma.booking_flights.findMany({
+      where,
+      include: {
+        booking: {
+          select: {
+            id: true,
+            booking_passengers: true,
+          },
+        },
+      },
+    });
+
+    // Enrich booking flights with flight details
+    const enrichedFlights = await Promise.all(
+      allBookingFlights.map(async (flight) => {
+        let flightDetails;
+
+        if (flight.flight_type === 'DOMESTIC') {
+          flightDetails = await this.prisma.domestic_flights.findUnique({
+            where: { id: flight.flight_id },
+            select: {
+              flight_no: true,
+              airline: true,
+              origin: true,
+              destination: true,
+              depart_time: true,
+              arrival_time: true,
+            },
+          });
+        } else if (flight.flight_type === 'INTERNATIONAL') {
+          flightDetails = await this.prisma.international_flights.findUnique({
+            where: { id: flight.flight_id },
+            select: {
+              flight_no: true,
+              airline: true,
+              origin: true,
+              destination: true,
+              depart_time: true,
+              arrival_time: true,
+            },
+          });
+        }
+
+        if (!flightDetails) return null;
+
+        const totalPassengers = flight.booking.booking_passengers.length;
+
+        return {
+          ...flightDetails,
+          route: `${flightDetails.origin} - ${flightDetails.destination}`,
+          departure: dayjs(flightDetails.depart_time).format('hh:mm A'),
+          arrival: dayjs(flightDetails.arrival_time).format('hh:mm A'),
+          date: dayjs(flight.flight_date).format('DD-MM-YY'),
+          totalPassengers,
+        };
+      }),
+    );
+
+    // Filter out null results
+    const validFlights = enrichedFlights.filter((flight) => flight !== null);
+
+    // Perform sorting on the entire dataset
+    const sortedFlights = validFlights.sort((a: any, b: any) => {
+      const fieldA = a[sortField];
+      const fieldB = b[sortField];
+      if (fieldA < fieldB) return sortDirection === 'asc' ? -1 : 1;
+      if (fieldA > fieldB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    // Paginate sorted results
+    const paginatedFlights = sortedFlights.slice(
+      (page - 1) * limit,
+      page * limit,
+    );
+
+    // Count the total records
+    const totalRecords = validFlights.length;
+
+    return {
+      data: paginatedFlights,
+      meta: {
+        currentPage: page,
+        total: totalRecords,
+        limit,
+        totalPages: Math.ceil(totalRecords / limit),
+      },
+    };
+  }
+
+  private async getFlightIdsBySearch(
+    flightType: 'domestic_flights' | 'international_flights',
+    search: string,
+  ): Promise<string[]> {
+    const flights = await (flightType === 'domestic_flights'
+      ? this.prisma.domestic_flights.findMany({
+          where: {
+            OR: [
+              { flight_no: { contains: search, mode: 'insensitive' } },
+              { airline: { contains: search, mode: 'insensitive' } },
+              { origin: { contains: search, mode: 'insensitive' } },
+              { destination: { contains: search, mode: 'insensitive' } },
+            ],
+          },
+          select: { id: true },
+        })
+      : this.prisma.international_flights.findMany({
+          where: {
+            OR: [
+              { flight_no: { contains: search, mode: 'insensitive' } },
+              { airline: { contains: search, mode: 'insensitive' } },
+              { origin: { contains: search, mode: 'insensitive' } },
+              { destination: { contains: search, mode: 'insensitive' } },
+            ],
+          },
+          select: { id: true },
+        }));
+
+    return flights.map((flight) => flight.id);
+  }
+  // async getSchedules(
+  //   origin: string,
+  //   destination: string,
+  //   date: Date,
+  //   cabinClass: CabinClass,
+  // ): Promise<
+  //   {
+  //     airline: string;
+  //     logo: string;
+  //     flight_no: string;
+  //     departure: string;
+  //     arrival: string;
+  //     duration: string;
+  //     origin: string;
+  //     destination: string;
+  //     price: number;
+  //   }[]
+  // > {
+  //   const weekday = date.getDay() === 0 ? 6 : date.getDay() - 1;
+
+  //   const [domesticFlights, internationalFlights] = await Promise.all([
+  //     this.prisma.domestic_flights.findMany({
+  //       where: {
+  //         origin,
+  //         destination,
+  //         depart_weekday: weekday,
+  //       },
+  //     }),
+  //     this.prisma.international_flights.findMany({
+  //       where: {
+  //         origin,
+  //         destination,
+  //         depart_weekday: weekday,
+  //       },
+  //     }),
+  //   ]);
+
+  //   const allFlights = [
+  //     ...domesticFlights.map((f) => ({ ...f, type: 'DOMESTIC' })),
+  //     ...internationalFlights.map((f) => ({ ...f, type: 'INTERNATIONAL' })),
+  //   ];
+
+  //   return allFlights
+  //     .map((flight) => {
+  //       let availableSeats: number;
+  //       let fare: number;
+
+  //       switch (cabinClass) {
+  //         case CabinClass.ECONOMY:
+  //           availableSeats = flight.available_economy_seats || 0;
+  //           fare = Number(flight.economy_fare);
+  //           break;
+  //         case CabinClass.BUSINESS:
+  //           availableSeats = flight.available_business_seats || 0;
+  //           fare = Number(flight.business_fare);
+  //           break;
+  //         case CabinClass.FIRST:
+  //           availableSeats = flight.available_first_seats || 0;
+  //           fare = Number(flight.first_fare);
+  //           break;
+  //         default:
+  //           availableSeats = flight.available_economy_seats || 0;
+  //           fare = Number(flight.economy_fare);
+  //       }
+
+  //       if (availableSeats <= 0 || fare <= 0) {
+  //         return null;
+  //       }
+
+  //       const departDateTime = this.combineDateAndTime(
+  //         date,
+  //         flight.depart_time,
+  //       );
+  //       const arrivalDateTime = this.calculateArrivalDate(
+  //         departDateTime,
+  //         flight.duration,
+  //         flight.arrival_weekday - flight.depart_weekday,
+  //       );
+
+  //       const durationHours = Math.floor(flight.duration / 60);
+  //       const durationMinutes = flight.duration % 60;
+
+  //       return {
+  //         airline: flight.airline,
+  //         logo: `/logos/${flight.airline_code.toLowerCase()}.png`,
+  //         flight_no: flight.flight_no,
+  //         departure: this.formatTimeOnly(departDateTime),
+  //         arrival: this.formatTimeOnly(arrivalDateTime),
+  //         duration: `${durationHours}h ${durationMinutes}m`,
+  //         origin: flight.origin,
+  //         destination: flight.destination,
+  //         price: fare,
+  //       };
+  //     })
+  //     .filter(
+  //       (flight): flight is NonNullable<typeof flight> => flight !== null,
+  //     );
+  // }
+  async getAllFlights(queryParams: PaginationDto) {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      sortBy = 'depart_time',
+      sortOrder,
+    } = queryParams;
+
+    const defaultType = 'DOMESTIC'; // Default to "domestic" flights
+    const defaultWeekday = new Date().getDay(); // Default to today's weekday
+
+    // Build query options for domestic flights with default filters
+    const queryOptionsDomestic = buildQueryOptions<
+      Prisma.domestic_flightsWhereInput,
+      Prisma.domestic_flightsOrderByWithRelationInput
+    >(
+      {
+        page,
+        limit,
+        search,
+        sortBy,
+        sortOrder,
+      },
+      ['flight_no', 'airline', 'origin', 'destination'], // Searchable fields
+    );
+
+    queryOptionsDomestic.where = {
+      ...queryOptionsDomestic.where,
+      depart_weekday: defaultWeekday,
+    };
+
+    // Build query options for international flights with default filters
+    const queryOptionsInternational = buildQueryOptions<
+      Prisma.international_flightsWhereInput,
+      Prisma.international_flightsOrderByWithRelationInput
+    >(
+      {
+        page,
+        limit,
+        search,
+        sortBy,
+        sortOrder,
+      },
+      ['flight_no', 'airline', 'origin', 'destination'], // Searchable fields
+    );
+
+    queryOptionsInternational.where = {
+      ...queryOptionsInternational.where,
+      depart_weekday: defaultWeekday,
+    };
+
+    // Fetch domestic flights
+    const domesticFlights = await this.prisma.domestic_flights.findMany({
+      where: queryOptionsDomestic.where,
+      orderBy: queryOptionsDomestic.orderBy,
+    });
+
+    // Fetch international flights
+    const internationalFlights =
+      await this.prisma.international_flights.findMany({
+        where: queryOptionsInternational.where,
+        orderBy: queryOptionsInternational.orderBy,
+      });
+
+    // Combine and format flight data
+    const combinedFlights = [
+      ...domesticFlights.map((flight) => ({
+        type: 'DOMESTIC',
+        airline: flight.airline,
+        flight_no: flight.flight_no,
+        departure: this.formatTimeOnly(flight.depart_time),
+        arrival: this.formatTimeOnly(flight.arrival_time),
+        duration: `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m`,
+        origin: flight.origin,
+        destination: flight.destination,
+        price: flight.economy_fare.toNumber(),
+      })),
+      ...internationalFlights.map((flight) => ({
+        type: 'INTERNATIONAL',
+        airline: flight.airline,
+        flight_no: flight.flight_no,
+        departure: this.formatTimeOnly(flight.depart_time),
+        arrival: this.formatTimeOnly(flight.arrival_time),
+        duration: `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m`,
+        origin: flight.origin,
+        destination: flight.destination,
+        price: flight.economy_fare.toNumber(),
+      })),
+    ];
+
+    // Apply pagination
+    const totalFlights = combinedFlights.length;
+    const skip = (page - 1) * limit;
+    const paginatedFlights = combinedFlights.slice(skip, skip + limit);
+
+    return {
+      data: paginatedFlights,
+      meta: {
+        currentPage: page,
+        total: totalFlights,
+        limit,
+        totalPages: Math.ceil(totalFlights / limit),
+      },
+    };
   }
 }
