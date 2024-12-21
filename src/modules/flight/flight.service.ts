@@ -3,11 +3,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';
 import { FlightSearchResponseDto } from '@/modules/flight/dto/flight-search-response.dto';
-import {
-  domestic_flights,
-  international_flights,
-  Prisma,
-} from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { CabinClass, TripType } from '@/common/enums';
 import dayjs from 'dayjs';
 import { PaginationDto } from '@/common/dto/pagination.dto';
@@ -200,13 +196,6 @@ export class FlightService {
     }
 
     return flight;
-  }
-
-  private formatTimeOnly(date: Date): string {
-    const utcHours = date.getUTCHours();
-    const utcMinutes = date.getUTCMinutes();
-
-    return `${utcHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`;
   }
 
   private async searchOneWayFlights(
@@ -419,10 +408,8 @@ export class FlightService {
       }),
     );
 
-    // Filter out null results
     const validFlights = enrichedFlights.filter((flight) => flight !== null);
 
-    // Perform sorting on the entire dataset
     const sortedFlights = validFlights.sort((a: any, b: any) => {
       const fieldA = a[sortField];
       const fieldB = b[sortField];
@@ -431,13 +418,11 @@ export class FlightService {
       return 0;
     });
 
-    // Paginate sorted results
     const paginatedFlights = sortedFlights.slice(
       (page - 1) * limit,
       page * limit,
     );
 
-    // Count the total records
     const totalRecords = validFlights.length;
 
     return {
@@ -499,16 +484,17 @@ export class FlightService {
       sortOrder = 'asc',
     } = queryParams;
 
-    const defaultWeekday = new Date().getDay(); // Default to today's weekday
+    const defaultWeekday = new Date().getDay();
 
     // Query options for domestic flights
     const queryOptionsDomestic = buildQueryOptions<
       Prisma.domestic_flightsWhereInput,
       Prisma.domestic_flightsOrderByWithRelationInput
-    >(
-      { page, limit, search, sortBy, sortOrder },
-      ['flight_no', 'origin', 'destination'], // Searchable fields
-    );
+    >({ page, limit, search, sortBy, sortOrder }, [
+      'flight_no',
+      'origin',
+      'destination',
+    ]);
     queryOptionsDomestic.where = {
       ...queryOptionsDomestic.where,
       depart_weekday: defaultWeekday,
@@ -556,7 +542,6 @@ export class FlightService {
         },
       });
 
-    // Combine and format flight data
     const combinedFlights = [
       ...domesticFlights.map((flight) => ({
         id: flight.id,
@@ -603,7 +588,6 @@ export class FlightService {
   }
 
   async getFlightDetails(flightNo: string): Promise<any> {
-    // Find flight in domestic flights
     const domesticFlight = await this.prisma.domestic_flights.findFirst({
       where: { flight_no: flightNo },
       include: {
@@ -611,7 +595,6 @@ export class FlightService {
       },
     });
 
-    // If found in domestic flights, return it
     if (domesticFlight) {
       return {
         type: 'DOMESTIC',
@@ -628,16 +611,14 @@ export class FlightService {
       };
     }
 
-    // Find flight in international flights
     const internationalFlight =
       await this.prisma.international_flights.findFirst({
         where: { flight_no: flightNo },
         include: {
-          airlines: true, // Include airline details
+          airlines: true,
         },
       });
 
-    // If found in international flights, return it
     if (internationalFlight) {
       return {
         type: 'INTERNATIONAL',
@@ -655,7 +636,6 @@ export class FlightService {
       };
     }
 
-    // If not found in either, throw an exception
     throw new BadRequestException(`Flight with flightNo ${flightNo} not found`);
   }
 
@@ -665,30 +645,25 @@ export class FlightService {
   ): Promise<any> {
     const { aircode, flightNoSuffix, origin, destination } = updateFlightDto;
 
-    // Validate origin if provided
     if (origin) {
       await this.validateAirportCode(origin, 'origin');
     }
 
-    // Validate destination if provided
     if (destination) {
       await this.validateAirportCode(destination, 'destination');
     }
 
-    // Derive the new flight number if aircode or flightNoSuffix is provided
     let newFlightNo = flightNo;
     if (aircode || flightNoSuffix) {
       const updatedAircode = aircode || flightNo.slice(0, 2); // Default to the current flightNo prefix
       const updatedSuffix = flightNoSuffix || flightNo.slice(2); // Default to the current flightNo suffix
       newFlightNo = `${updatedAircode}${updatedSuffix}`;
 
-      // Validate unique flight number if it differs from the current one
       if (newFlightNo !== flightNo) {
         await this.validateUniqueFlightNo(newFlightNo);
       }
     }
 
-    // Update domestic or international flight
     const domesticFlight = await this.prisma.domestic_flights.findFirst({
       where: { flight_no: flightNo },
     });
@@ -720,17 +695,13 @@ export class FlightService {
   async createFlight(createFlightDto: CreateFlightDto): Promise<any> {
     const { aircode, flightNoSuffix, origin, destination } = createFlightDto;
 
-    // Validate origin and destination
     await this.validateAirportCode(origin, 'origin');
     await this.validateAirportCode(destination, 'destination');
 
-    // Derive flightNo from aircode and flightNoSuffix
     const flightNo = `${aircode}${flightNoSuffix}`;
 
-    // Validate unique flight number
     await this.validateUniqueFlightNo(flightNo);
 
-    // Get origin and destination airports
     const originAirport = await this.prisma.airports.findUnique({
       where: { code: origin },
     });
@@ -738,7 +709,6 @@ export class FlightService {
       where: { code: destination },
     });
 
-    // Check if both airports are in the same country
     const isDomestic = originAirport?.country === destinationAirport?.country;
 
     if (isDomestic) {
