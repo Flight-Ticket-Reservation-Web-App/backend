@@ -16,23 +16,20 @@ export class AirlineService {
   constructor(private readonly prisma: PrismaService) {}
 
   findAll = async (paginationDto: PaginationDto) => {
-    const searchFields = ['airline_name', 'aircode']; // Replace with actual searchable fields for `airlines`
+    const searchFields = ['airline_name', 'aircode'];
     const queryOptions = buildQueryOptions<
       Prisma.airlinesWhereInput,
       Prisma.airlinesOrderByWithRelationInput
     >(paginationDto, searchFields);
 
-    // Count the total records for pagination metadata
     const totalRecords = await this.prisma.airlines.count({
       where: queryOptions.where,
     });
 
-    // Fetch the data with pagination and filters
     const data = await this.prisma.airlines.findMany({
       ...queryOptions,
     });
 
-    // Calculate pagination metadata
     const totalPages = Math.ceil(totalRecords / paginationDto.limit);
     const pagination = {
       currentPage: paginationDto.page,
@@ -62,10 +59,6 @@ export class AirlineService {
       });
       return { message: 'Airline updated successfully', data: updatedAirline };
     } catch (error) {
-      if (error.code === 'P2025') {
-        // Prisma "Record to update not found"
-        throw new NotFoundException(`Airline with ID ${id} not found.`);
-      }
       throw new BadRequestException(
         `Failed to update airline: ${error.message}`,
       );

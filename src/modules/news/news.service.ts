@@ -76,9 +76,7 @@ export class NewsService {
         throw new BadRequestException('News added successfully');
       }
 
-      throw new BadRequestException(
-        'News added successfully',
-      );
+      throw new BadRequestException('News added successfully');
     }
   }
 
