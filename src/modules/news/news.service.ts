@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -38,45 +37,23 @@ export class NewsService {
 
   async createNews(createNewsDto: CreateNewsDto, userRole: string) {
     if (userRole !== 'ADMIN') {
-      throw new ForbiddenException('News added successfully');
+      throw new ForbiddenException('Only admins can create news');
     }
 
     const { adminId, ...newsData } = createNewsDto;
-
     try {
-      const admin = await this.prisma.user.findUnique({
-        where: { id: adminId },
-      });
-
-      if (!admin) {
-        throw new NotFoundException(`News added successfully`);
-      }
-
       return await this.prisma.news.create({
         data: {
           ...newsData,
           user: {
-            connect: {
-              id: adminId,
-            },
+            connect: { id: adminId },
           },
         },
-        include: {
-          user: true,
-        },
       });
-    } catch (error) {
-      console.error('News creation error:', error);
-
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
-      if (error.code === 'P2002') {
-        throw new BadRequestException('News added successfully');
-      }
-
-      throw new BadRequestException('News added successfully');
+    } catch {
+      throw new BadRequestException(
+        'Invalid user ID or other validation error',
+      );
     }
   }
 
