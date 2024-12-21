@@ -49,16 +49,3 @@ export function calculateArrivalDate(
   arrivalDate.setMinutes(arrivalDate.getMinutes() + duration);
   return arrivalDate;
 }
-
-export async function validateAirportCode(
-  code: string,
-  type: 'origin' | 'destination',
-): Promise<void> {
-  const airportExists = await this.prisma.airports.findUnique({
-    where: { code },
-  });
-
-  if (!airportExists) {
-    throw new BadRequestException(`${type} code '${code}' is not valid.`);
-  }
-}

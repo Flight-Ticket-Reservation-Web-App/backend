@@ -51,7 +51,7 @@ export class CreateFlightDto {
       `Invalid time format for departure_time. Expected HH:mm or ISO-8601, received: ${value}`,
     );
   })
-  departure_time: string;
+  depart_time: string;
 
   @IsString()
   @IsNotEmpty()

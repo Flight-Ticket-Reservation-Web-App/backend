@@ -18,7 +18,6 @@ import {
   calculateArrivalDate,
   combineDateAndTime,
   formatTimeOnly,
-  validateAirportCode,
 } from '@/utils/helper';
 @Injectable()
 export class FlightService {
@@ -534,12 +533,12 @@ export class FlightService {
 
     // Validate origin if provided
     if (origin) {
-      await validateAirportCode(origin, 'origin');
+      await this.validateAirportCode(origin, 'origin');
     }
 
     // Validate destination if provided
     if (destination) {
-      await validateAirportCode(destination, 'destination');
+      await this.validateAirportCode(destination, 'destination');
     }
 
     // Derive the new flight number if aircode or flightNoSuffix is provided
@@ -588,8 +587,8 @@ export class FlightService {
     const { aircode, flightNoSuffix, origin, destination } = createFlightDto;
 
     // Validate origin and destination
-    await validateAirportCode(origin, 'origin');
-    await validateAirportCode(destination, 'destination');
+    await this.validateAirportCode(origin, 'origin');
+    await this.validateAirportCode(destination, 'destination');
 
     // Derive flightNo from aircode and flightNoSuffix
     const flightNo = `${aircode}${flightNoSuffix}`;
@@ -612,20 +611,20 @@ export class FlightService {
       const {
         aircode,
         flightNoSuffix,
-        departure_time,
+        depart_time,
         arrival_time,
         ...flightData
       } = createFlightDto;
       return this.prisma.domestic_flights.create({
         data: {
           flight_no: flightNo,
-          depart_time: new Date(departure_time),
+          depart_time: new Date(depart_time),
           arrival_time: new Date(arrival_time),
-          depart_weekday: new Date(departure_time).getDay(),
+          depart_weekday: new Date(depart_time).getDay(),
           arrival_weekday: new Date(arrival_time).getDay(),
           duration: Math.round(
             (new Date(arrival_time).getTime() -
-              new Date(departure_time).getTime()) /
+              new Date(depart_time).getTime()) /
               60000,
           ),
           origin: origin,
@@ -651,7 +650,7 @@ export class FlightService {
       const {
         aircode,
         flightNoSuffix,
-        departure_time,
+        depart_time,
         arrival_time,
         economy_fare,
         business_fare,
@@ -660,13 +659,13 @@ export class FlightService {
       return this.prisma.international_flights.create({
         data: {
           flight_no: flightNo,
-          depart_time: new Date(departure_time),
+          depart_time: new Date(depart_time),
           arrival_time: new Date(arrival_time),
-          depart_weekday: new Date(departure_time).getDay(),
+          depart_weekday: new Date(depart_time).getDay(),
           arrival_weekday: new Date(arrival_time).getDay(),
           duration: Math.round(
             (new Date(arrival_time).getTime() -
-              new Date(departure_time).getTime()) /
+              new Date(depart_time).getTime()) /
               60000,
           ),
           economy_fare: new Prisma.Decimal(economy_fare),
@@ -701,6 +700,19 @@ export class FlightService {
       throw new BadRequestException(
         `Flight number '${flightNo}' already exists.`,
       );
+    }
+  }
+
+  private async validateAirportCode(
+    code: string,
+    type: 'origin' | 'destination',
+  ): Promise<void> {
+    const airportExists = await this.prisma.airports.findUnique({
+      where: { code },
+    });
+
+    if (!airportExists) {
+      throw new BadRequestException(`${type} code '${code}' is not valid.`);
     }
   }
 }
