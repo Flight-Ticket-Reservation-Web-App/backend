@@ -36,18 +36,29 @@ export class AirlineController {
     return this.airlineService.findAll(queryParams);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.airlineService.findOne(+id);
-  }
+  // @Get(':id')
+  // findOne(@Param('id') id: string) {
+  //   return this.airlineService.findOne(+id);
+  // }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAirlineDto: UpdateAirlineDto) {
-    return this.airlineService.update(+id, updateAirlineDto);
+  async update(
+    @Param('id') id: string,
+    @Body() updateAirlineDto: UpdateAirlineDto,
+  ) {
+    try {
+      return await this.airlineService.update(id, updateAirlineDto);
+    } catch (error) {
+      return { error: error.message };
+    }
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.airlineService.remove(+id);
+  async remove(@Param('id') id: string) {
+    try {
+      return await this.airlineService.remove(id);
+    } catch (error) {
+      return { error: error.message };
+    }
   }
 }

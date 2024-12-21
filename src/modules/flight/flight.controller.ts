@@ -7,11 +7,15 @@ import {
   HttpStatus,
   Get,
   Query,
+  Param,
+  BadRequestException,
+  Patch,
 } from '@nestjs/common';
 import { FlightService } from '@/modules/flight/flight.service';
 import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';
 import { Public } from '@/decorator/public-decorator';
 import { PaginationDto } from '@/common/dto/pagination.dto';
+import { UpdateFlightDto } from './dto/update-flight.dto';
 
 @Controller('flights')
 export class FlightController {
@@ -60,5 +64,33 @@ export class FlightController {
     queryParams: PaginationDto,
   ) {
     return this.flightService.getAllFlights(queryParams);
+  }
+
+  @Get(':flightNo')
+  @HttpCode(HttpStatus.OK)
+  @Public()
+  async getFlightDetails(@Param('flightNo') flightNo: string) {
+    if (!flightNo) {
+      throw new BadRequestException('Flight number is required.');
+    }
+    return this.flightService.getFlightDetails(flightNo);
+  }
+
+  @Patch(':flightNo')
+  @HttpCode(HttpStatus.OK)
+  async updateFlightDetails(
+    @Param('flightNo') flightNo: string,
+    @Body(
+      new ValidationPipe({
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+      }),
+    )
+    updateData: UpdateFlightDto,
+  ) {
+    if (!flightNo) {
+      throw new BadRequestException('Flight number is required.');
+    }
+    return this.flightService.updateFlight(flightNo, updateData);
   }
 }

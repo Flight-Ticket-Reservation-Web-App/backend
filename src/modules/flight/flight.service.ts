@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';
@@ -11,6 +12,8 @@ import { CabinClass, TripType } from '@/common/enums';
 import dayjs from 'dayjs';
 import { PaginationDto } from '@/common/dto/pagination.dto';
 import { buildQueryOptions } from '@/utils/query';
+import { UpdateFlightDto } from './dto/update-flight.dto';
+import { CreateFlightDto } from './dto/create-flight.dto';
 @Injectable()
 export class FlightService {
   constructor(private readonly prisma: PrismaService) {}
@@ -544,4 +547,273 @@ export class FlightService {
       },
     };
   }
+
+  async getFlightDetails(flightNo: string): Promise<any> {
+    // Find flight in domestic flights
+    const domesticFlight = await this.prisma.domestic_flights.findFirst({
+      where: { flight_no: flightNo },
+      include: {
+        airlines: true, // Include airline details
+      },
+    });
+
+    // If found in domestic flights, return it
+    if (domesticFlight) {
+      return {
+        type: 'DOMESTIC',
+        airline: domesticFlight.airlines?.airline_name || 'Unknown Airline',
+        flightNo: domesticFlight.flight_no,
+        origin: domesticFlight.origin,
+        destination: domesticFlight.destination,
+        departTime: this.formatTimeOnly(domesticFlight.depart_time),
+        arrivalTime: this.formatTimeOnly(domesticFlight.arrival_time),
+        duration: `${Math.floor(domesticFlight.duration / 60)}h ${domesticFlight.duration % 60}m`,
+        economyFare: domesticFlight.economy_fare.toNumber(),
+        businessFare: domesticFlight.business_fare.toNumber(),
+        status: domesticFlight.status || 'Unknown',
+      };
+    }
+
+    // Find flight in international flights
+    const internationalFlight =
+      await this.prisma.international_flights.findFirst({
+        where: { flight_no: flightNo },
+        include: {
+          airlines: true, // Include airline details
+        },
+      });
+
+    // If found in international flights, return it
+    if (internationalFlight) {
+      return {
+        type: 'INTERNATIONAL',
+        airline:
+          internationalFlight.airlines?.airline_name || 'Unknown Airline',
+        flightNo: internationalFlight.flight_no,
+        origin: internationalFlight.origin,
+        destination: internationalFlight.destination,
+        departTime: this.formatTimeOnly(internationalFlight.depart_time),
+        arrivalTime: this.formatTimeOnly(internationalFlight.arrival_time),
+        duration: `${Math.floor(internationalFlight.duration / 60)}h ${internationalFlight.duration % 60}m`,
+        economyFare: internationalFlight.economy_fare.toNumber(),
+        businessFare: internationalFlight.business_fare.toNumber(),
+        status: internationalFlight.status || 'Unknown',
+      };
+    }
+
+    // If not found in either, throw an exception
+    throw new BadRequestException(`Flight with flightNo ${flightNo} not found`);
+  }
+
+  async updateFlight(
+    flightNo: string,
+    updateFlightDto: UpdateFlightDto,
+  ): Promise<any> {
+    const { aircode, flightNoSuffix, origin, destination } = updateFlightDto;
+
+    // Validate origin if provided
+    if (origin) {
+      await this.validateAirportCode(origin, 'origin');
+    }
+
+    // Validate destination if provided
+    if (destination) {
+      await this.validateAirportCode(destination, 'destination');
+    }
+
+    // Derive the new flight number if aircode or flightNoSuffix is provided
+    let newFlightNo = flightNo;
+    if (aircode || flightNoSuffix) {
+      const updatedAircode = aircode || flightNo.slice(0, 2); // Default to the current flightNo prefix
+      const updatedSuffix = flightNoSuffix || flightNo.slice(2); // Default to the current flightNo suffix
+      newFlightNo = `${updatedAircode}${updatedSuffix}`;
+
+      // Validate unique flight number if it differs from the current one
+      if (newFlightNo !== flightNo) {
+        await this.validateUniqueFlightNo(newFlightNo);
+      }
+    }
+
+    // Update domestic or international flight
+    const domesticFlight = await this.prisma.domestic_flights.findFirst({
+      where: { flight_no: flightNo },
+    });
+
+    if (domesticFlight) {
+      return this.prisma.domestic_flights.update({
+        where: { id: domesticFlight.id },
+        data: { ...updateFlightDto, flight_no: newFlightNo },
+      });
+    }
+
+    const internationalFlight =
+      await this.prisma.international_flights.findFirst({
+        where: { flight_no: flightNo },
+      });
+
+    if (internationalFlight) {
+      return this.prisma.international_flights.update({
+        where: { id: internationalFlight.id },
+        data: { ...updateFlightDto, flight_no: newFlightNo },
+      });
+    }
+
+    throw new BadRequestException(
+      `Flight with flightNo '${flightNo}' not found.`,
+    );
+  }
+
+  async validateAirportCode(
+    code: string,
+    type: 'origin' | 'destination',
+  ): Promise<void> {
+    const airportExists = await this.prisma.airports.findUnique({
+      where: { code },
+    });
+
+    if (!airportExists) {
+      throw new BadRequestException(`${type} code '${code}' is not valid.`);
+    }
+  }
+
+  async createFlight(createFlightDto: CreateFlightDto): Promise<any> {
+    const { aircode, flightNoSuffix, origin, destination } = createFlightDto;
+
+    // Validate origin and destination
+    await this.validateAirportCode(origin, 'origin');
+    await this.validateAirportCode(destination, 'destination');
+
+    // Derive flightNo from aircode and flightNoSuffix
+    const flightNo = `${aircode}${flightNoSuffix}`;
+
+    // Validate unique flight number
+    await this.validateUniqueFlightNo(flightNo);
+
+    // Get origin and destination airports
+    const originAirport = await this.prisma.airports.findUnique({
+      where: { code: origin },
+    });
+    const destinationAirport = await this.prisma.airports.findUnique({
+      where: { code: destination },
+    });
+
+    // Check if both airports are in the same country
+    const isDomestic = originAirport?.country === destinationAirport?.country;
+
+    if (isDomestic) {
+      const {
+        aircode,
+        flightNoSuffix,
+        departureTime,
+        arrivalTime,
+        ...flightData
+      } = createFlightDto;
+      return this.prisma.domestic_flights.create({
+        data: {
+          flight_no: flightNo,
+          depart_time: new Date(departureTime),
+          arrival_time: new Date(arrivalTime),
+          depart_weekday: new Date(departureTime).getDay(),
+          arrival_weekday: new Date(arrivalTime).getDay(),
+          duration: Math.round(
+            (new Date(arrivalTime).getTime() -
+              new Date(departureTime).getTime()) /
+              60000,
+          ),
+          origin: origin,
+          destination: destination,
+          economy_fare: new Prisma.Decimal(flightData.economyFare),
+          business_fare: new Prisma.Decimal(flightData.businessFare),
+          first_fare: new Prisma.Decimal(0),
+          economy_seats: 180,
+          business_seats: 20,
+          first_seats: 0,
+          available_economy_seats: 180,
+          available_business_seats: 20,
+          available_first_seats: 0,
+          status: 'SCHEDULED',
+          airlines: {
+            connect: {
+              aircode: aircode,
+            },
+          },
+        },
+      });
+    } else {
+      const {
+        aircode,
+        flightNoSuffix,
+        departureTime,
+        arrivalTime,
+        economyFare,
+        businessFare,
+        ...flightData
+      } = createFlightDto;
+      return this.prisma.international_flights.create({
+        data: {
+          flight_no: flightNo,
+          depart_time: new Date(departureTime),
+          arrival_time: new Date(arrivalTime),
+          depart_weekday: new Date(departureTime).getDay(),
+          arrival_weekday: new Date(arrivalTime).getDay(),
+          duration: Math.round(
+            (new Date(arrivalTime).getTime() -
+              new Date(departureTime).getTime()) /
+              60000,
+          ),
+          economy_fare: new Prisma.Decimal(economyFare),
+          business_fare: new Prisma.Decimal(businessFare),
+          first_fare: new Prisma.Decimal(0),
+          economy_seats: 180,
+          business_seats: 20,
+          first_seats: 0,
+          available_economy_seats: 180,
+          available_business_seats: 20,
+          available_first_seats: 0,
+          ...flightData,
+          airlines: {
+            connect: {
+              aircode: aircode,
+            },
+          },
+        },
+      });
+    }
+  }
+  async validateUniqueFlightNo(flightNo: string): Promise<void> {
+    const existingFlight =
+      (await this.prisma.domestic_flights.findFirst({
+        where: { flight_no: flightNo },
+      })) ||
+      (await this.prisma.international_flights.findFirst({
+        where: { flight_no: flightNo },
+      }));
+
+    if (existingFlight) {
+      throw new BadRequestException(
+        `Flight number '${flightNo}' already exists.`,
+      );
+    }
+  }
+
+  // async validateAircodeAndAirports(
+  //   origin: string,
+  //   destination: string,
+  // ): Promise<void> {
+  //   // Check if origin and destination codes exist in the airports table
+  //   const [originExists, destinationExists] = await Promise.all([
+  //     this.prisma.airports.findUnique({ where: { code: origin } }),
+  //     this.prisma.airports.findUnique({ where: { code: destination } }),
+  //   ]);
+
+  //   if (!originExists) {
+  //     throw new BadRequestException(`Origin code '${origin}' is not valid.`);
+  //   }
+
+  //   if (!destinationExists) {
+  //     throw new BadRequestException(
+  //       `Destination code '${destination}' is not valid.`,
+  //     );
+  //   }
+  // }
 }
