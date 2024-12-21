@@ -127,8 +127,7 @@ export class TicketService {
             // Flight details
             flightId: ticket.flight_id,
             flightNo: flightDetails.flight_no,
-            // airline: flightDetails.aircode,
-            airlines: (
+            airline: (
               await this.prisma.airlines.findUnique({
                 where: { aircode: flightDetails.aircode },
               })
@@ -311,6 +310,11 @@ export class TicketService {
       throw new NotFoundException(`Flight ${flightId} not found`);
     }
 
+    // Get airline name
+    const airline = await this.prisma.airlines.findUnique({
+      where: { aircode: flightDetails.aircode },
+    });
+
     const bookingFlight = ticketDetails.booking.booking_flights[0];
     const flightDate = bookingFlight.flight_date;
 
@@ -328,13 +332,13 @@ export class TicketService {
     return {
       ticketNumber: ticketDetails.ticket_number,
       flightId: flightId,
-      airline: flightDetails.airline,
+      airline: airline?.airline_name || flightDetails.aircode,
       flightNo: flightDetails.flight_no,
       origin: flightDetails.origin,
       destination: flightDetails.destination,
       departDate: departDateTime,
       departTime: this.formatTimeOnly(departDateTime),
-      arrivalDate: arrivalDateTime, 
+      arrivalDate: arrivalDateTime,
       arrivalTime: this.formatTimeOnly(arrivalDateTime),
       duration: flightDetails.duration,
       gate: flightDetails.gate,

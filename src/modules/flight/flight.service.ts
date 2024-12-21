@@ -138,74 +138,115 @@ export class FlightService {
     const numericId = flightId.slice(1);
     let flight;
 
-    // Update flight delay
+    // Get current flight status before update
+    const currentFlight =
+      prefix === 'D'
+        ? await this.prisma.domestic_flights.findUnique({
+            where: { id: `D${numericId}` },
+          })
+        : await this.prisma.international_flights.findUnique({
+            where: { id: `I${numericId}` },
+          });
+
+    if (!currentFlight) {
+      throw new BadRequestException('Flight not found');
+    }
+
+    // Determine flight status changes
+    const isNewDelay = currentFlight.delay_duration === 0 && delayDuration > 0;
+    const isDelayRemoved =
+      currentFlight.delay_duration > 0 && delayDuration === 0;
+    const isDelayChanged =
+      currentFlight.delay_duration > 0 &&
+      delayDuration > 0 &&
+      currentFlight.delay_duration !== delayDuration;
+
+    // Determine flight status based on delay duration
+    const status = delayDuration > 0 ? 'DELAYED' : 'ON_TIME';
+
+    // Update flight delay and status
     if (prefix === 'D') {
       flight = await this.prisma.domestic_flights.update({
         where: { id: `D${numericId}` },
-        data: { delay_duration: delayDuration },
+        data: {
+          delay_duration: delayDuration,
+          status: status,
+        },
       });
     } else if (prefix === 'I') {
       flight = await this.prisma.international_flights.update({
         where: { id: `I${numericId}` },
-        data: { delay_duration: delayDuration },
+        data: {
+          delay_duration: delayDuration,
+          status: status,
+        },
       });
-    } else {
-      throw new BadRequestException('Invalid flight ID format');
     }
 
-    // Find affected active bookings and notify users
-    const now = new Date();
-    const affectedBookings = await this.prisma.bookings.findMany({
-      where: {
-        status: 'CONFIRMED', // Only get active bookings
-        booking_flights: {
-          some: {
-            flight_id: flightId,
-            flight_date: {
-              gt: now, // Only future flights
+    // Send notification if there's any change in delay status or duration
+    if (isNewDelay || isDelayRemoved || isDelayChanged) {
+      // Find affected active bookings
+      const now = new Date();
+      const affectedBookings = await this.prisma.bookings.findMany({
+        where: {
+          status: 'CONFIRMED',
+          booking_flights: {
+            some: {
+              flight_id: flightId,
+              flight_date: { gt: now },
             },
           },
         },
-      },
-      include: {
-        user: true,
-        booking_flights: {
-          where: {
-            flight_id: flightId,
+        include: {
+          user: true,
+          booking_flights: {
+            where: { flight_id: flightId },
           },
         },
-      },
-    });
+      });
 
-    // Send notifications
-    for (const booking of affectedBookings) {
-      try {
-        const flightDate = booking.booking_flights[0].flight_date;
-        const formattedDate = new Date(flightDate).toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'UTC',
-        });
+      // Send notifications
+      for (const booking of affectedBookings) {
+        try {
+          const flightDate = booking.booking_flights[0].flight_date;
+          const formattedDate = new Date(flightDate).toLocaleDateString(
+            'en-GB',
+            {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'UTC',
+            },
+          );
 
-        await this.mailerService.sendMail({
-          to: booking.user.email,
-          subject: 'Flight Delay Notification',
-          template: './flight-delay',
-          context: {
-            bookingNumber: booking.booking_number,
-            flightId: flightId,
-            flightDate: formattedDate,
-            delayDuration: delayDuration,
-          },
-        });
-      } catch (err) {
-        console.error(
-          `Failed to send delay notification for booking ${booking.booking_number}:`,
-          err,
-        );
+          // Choose appropriate template and subject based on the type of change
+          const template =
+            delayDuration > 0 ? './flight-delay' : './flight-ontime';
+          const subject = isDelayRemoved
+            ? 'Flight Back On Schedule'
+            : isDelayChanged
+              ? 'Flight Delay Update'
+              : 'Flight Delay Notification';
+
+          await this.mailerService.sendMail({
+            to: booking.user.email,
+            subject: subject,
+            template: template,
+            context: {
+              bookingNumber: booking.booking_number,
+              flightId: flightId,
+              flightDate: formattedDate,
+              ...(delayDuration > 0 && { delayDuration: delayDuration }),
+            },
+          });
+        } catch (err) {
+          console.error(
+            `Failed to send status notification for booking ${booking.booking_number}:`,
+            err,
+          );
+        }
       }
     }
 

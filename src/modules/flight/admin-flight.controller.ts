@@ -14,7 +14,7 @@ import { UpdateFlightDelayDto } from '@/modules/flight/dto/update-flight-delay.d
 import { Public } from '@/decorator/public-decorator';
 import { Role } from '@/common/enums';
 
-@Roles(Role.ADMIN)
+// @Roles(Role.ADMIN)
 @Controller('admin/flights')
 @Public()
 export class AdminFlightController {
@@ -80,13 +80,5 @@ export class AdminFlightController {
   @Delete('international/:id')
   deleteInternational(@Param('id') id: string): Promise<international_flights> {
     return this.flightService.deleteInternational(id);
-  }
-
-  @Put('delay')
-  async updateFlightDelay(@Body() updateDelayDto: UpdateFlightDelayDto) {
-    return this.flightService.updateFlightDelay(
-      updateDelayDto.flightId,
-      updateDelayDto.delayDuration,
-    );
   }
 }

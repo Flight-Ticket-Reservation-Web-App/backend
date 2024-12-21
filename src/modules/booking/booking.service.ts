@@ -28,6 +28,12 @@ export class BookingService {
     const { tripType, outboundFlight, returnFlight, passengers } =
       createBookingDto;
 
+    // Validate at least one adult passenger
+    this.validatePassengerGroup(passengers);
+
+    // Validate passenger ages based on type
+    this.validatePassengerAges(passengers);
+
     // Validate flights and get their details
     const outboundFlightDetails = await this.validateAndGetFlight(
       outboundFlight.flightId,
@@ -176,6 +182,53 @@ export class BookingService {
         timeout: 10000, // Extend timeout to 10 seconds
       },
     );
+  }
+
+  private validatePassengerGroup(passengers: any[]) {
+    const hasAdult = passengers.some(
+      (passenger) => passenger.type === PassengerType.ADULT,
+    );
+
+    if (!hasAdult) {
+      throw new BadRequestException(
+        'Booking must include at least one adult passenger',
+      );
+    }
+  }
+
+  private validatePassengerAges(passengers: any[]) {
+    const today = new Date();
+
+    for (const passenger of passengers) {
+      const birthDate = new Date(passenger.dob);
+      const age = this.calculateAge(birthDate, today);
+
+      if (passenger.type === PassengerType.ADULT && age < 18) {
+        throw new BadRequestException(
+          `Adult passenger ${passenger.firstName} ${passenger.lastName} must be at least 18 years old`,
+        );
+      }
+
+      if (passenger.type === PassengerType.CHILD && age >= 18) {
+        throw new BadRequestException(
+          `Child passenger ${passenger.firstName} ${passenger.lastName} must be under 18 years old`,
+        );
+      }
+    }
+  }
+
+  private calculateAge(birthDate: Date, currentDate: Date): number {
+    let age = currentDate.getFullYear() - birthDate.getFullYear();
+    const monthDiff = currentDate.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && currentDate.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    return age;
   }
 
   private async validateAndGetFlight(flightId: string, cabinClass: CabinClass) {
@@ -359,7 +412,13 @@ export class BookingService {
     userId: number,
     query: BookingHistoryQueryDto,
   ): Promise<{ data: BookingHistoryDto[]; total: number; pages: number }> {
-    const { status, tripType, sortOrder = SortOrder.DESC, page = 1, limit = 10 } = query;
+    const {
+      status,
+      tripType,
+      sortOrder = SortOrder.DESC,
+      page = 1,
+      limit = 10,
+    } = query;
 
     const skip = (page - 1) * limit;
 

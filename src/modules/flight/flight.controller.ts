@@ -10,12 +10,14 @@ import {
   Param,
   BadRequestException,
   Patch,
+  Put
 } from '@nestjs/common';
 import { FlightService } from '@/modules/flight/flight.service';
 import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';
 import { Public } from '@/decorator/public-decorator';
 import { PaginationDto } from '@/common/dto/pagination.dto';
-import { UpdateFlightDto } from './dto/update-flight.dto';
+import { UpdateFlightDto } from '@/modules/flight/dto/update-flight.dto';
+import { UpdateFlightDelayDto } from '@/modules/flight/dto/update-flight-delay.dto';
 
 @Controller('flights')
 export class FlightController {
@@ -92,5 +94,15 @@ export class FlightController {
       throw new BadRequestException('Flight number is required.');
     }
     return this.flightService.updateFlight(flightNo, updateData);
+  }
+
+  @Put('delay')
+  @HttpCode(HttpStatus.OK)
+  @Public()
+  async updateFlightDelay(@Body() updateDelayDto: UpdateFlightDelayDto) {
+    return this.flightService.updateFlightDelay(
+      updateDelayDto.flightId,
+      updateDelayDto.delayDuration,
+    );
   }
 }
