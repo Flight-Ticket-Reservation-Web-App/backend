@@ -14,6 +14,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { BookingModule } from '@/modules/booking/booking.module';
 import { NewsModule } from '@/modules/news/news.module';
 import { RoleGuard } from '@/auth/role/role.guard';
+import { AirlineModule } from './modules/airline/airline.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { RoleGuard } from '@/auth/role/role.guard';
     AuthModule,
     BookingModule,
     NewsModule,
+    AirlineModule,
   ],
   controllers: [AppController],
   providers: [
