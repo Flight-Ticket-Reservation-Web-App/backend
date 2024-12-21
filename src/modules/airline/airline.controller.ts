@@ -12,12 +12,18 @@ import {
   HttpException,
   NotFoundException,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { AirlineService } from './airline.service';
 import { CreateAirlineDto } from './dto/create-airline.dto';
 import { UpdateAirlineDto } from './dto/update-airline.dto';
 import { PaginationDto } from '@/common/dto/pagination.dto';
+import { Roles } from '@/auth/role/role.decorator';
+import { RoleGuard } from '@/auth/role/role.guard';
+import { Role } from '@/common/enums';
 
+@UseGuards(RoleGuard)
+@Roles(Role.ADMIN)
 @Controller('airline')
 export class AirlineController {
   constructor(private readonly airlineService: AirlineService) {}
@@ -39,11 +45,6 @@ export class AirlineController {
   ) {
     return this.airlineService.findAll(queryParams);
   }
-
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.airlineService.findOne(+id);
-  // }
 
   @Patch(':id')
   async update(

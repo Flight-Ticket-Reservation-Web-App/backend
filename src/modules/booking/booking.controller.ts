@@ -16,7 +16,11 @@ import { RoleGuard } from '@/auth/role/role.guard';
 import { UnauthorizedException } from '@nestjs/common';
 import { BookingHistoryDto } from '@/modules/booking/dto/booking-history.dto';
 import { BookingHistoryQueryDto } from '@/modules/booking/dto/booking-history-query.dto';
+import { Roles } from '@/auth/role/role.decorator';
+import { Role } from '@/common/enums';
 
+@UseGuards(RoleGuard)
+@Roles(Role.ADMIN)
 @Controller('bookings')
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}

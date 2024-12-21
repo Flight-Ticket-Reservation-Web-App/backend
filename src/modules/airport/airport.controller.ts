@@ -7,14 +7,18 @@ import {
   Param,
   Delete,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { AirportService } from '@/modules/airport/airport.service';
 import { CreateAirportDto } from '@/modules/airport/dto/create-airport.dto';
 import { UpdateAirportDto } from '@/modules/airport/dto/update-airport.dto';
-import { Public } from '@/decorator/public-decorator';
 import { AirportQueryDto } from '@/modules/airport/dto/fetch-airport.dto';
+import { RoleGuard } from '@/auth/role/role.guard';
+import { Roles } from '@/auth/role/role.decorator';
+import { Role } from '@/common/enums';
 
-@Public()
+@UseGuards(RoleGuard)
+@Roles(Role.ADMIN)
 @Controller('airport')
 export class AirportController {
   constructor(private readonly airportService: AirportService) {}
