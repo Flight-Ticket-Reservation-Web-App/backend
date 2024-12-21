@@ -9,7 +9,7 @@ services:
     container_name: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts/dump5.sql:/docker-entrypoint-initdb.d/dump5.sql # this is the path to the sql file
+      - ./init-scripts/dump6.sql:/docker-entrypoint-initdb.d/dump6.sql # this is the path to the sql file
     ports:
       - '5432:5432'
     networks:

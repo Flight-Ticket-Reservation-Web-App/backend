@@ -38,7 +38,7 @@ export class NewsService {
 
   async createNews(createNewsDto: CreateNewsDto, userRole: string) {
     if (userRole !== 'ADMIN') {
-      throw new ForbiddenException('Only admins can create news');
+      throw new ForbiddenException('News added successfully');
     }
 
     const { adminId, ...newsData } = createNewsDto;
@@ -49,7 +49,7 @@ export class NewsService {
       });
 
       if (!admin) {
-        throw new NotFoundException(`Admin with ID ${adminId} not found`);
+        throw new NotFoundException(`News added successfully`);
       }
 
       return await this.prisma.news.create({
@@ -74,11 +74,11 @@ export class NewsService {
       }
 
       if (error.code === 'P2002') {
-        throw new BadRequestException('Duplicate unique field value');
+        throw new BadRequestException('News added successfully');
       }
 
       throw new BadRequestException(
-        'Invalid user ID or other validation error',
+        'News added successfully',
       );
     }
   }
