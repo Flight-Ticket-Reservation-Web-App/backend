@@ -630,8 +630,8 @@ export class FlightService {
           ),
           origin: origin,
           destination: destination,
-          economy_fare: new Prisma.Decimal(flightData.economyFare),
-          business_fare: new Prisma.Decimal(flightData.businessFare),
+          economy_fare: new Prisma.Decimal(flightData.economy_fare),
+          business_fare: new Prisma.Decimal(flightData.business_fare),
           first_fare: new Prisma.Decimal(0),
           economy_seats: 180,
           business_seats: 20,
@@ -653,8 +653,8 @@ export class FlightService {
         flightNoSuffix,
         departure_time,
         arrival_time,
-        economyFare,
-        businessFare,
+        economy_fare,
+        business_fare,
         ...flightData
       } = createFlightDto;
       return this.prisma.international_flights.create({
@@ -669,8 +669,8 @@ export class FlightService {
               new Date(departure_time).getTime()) /
               60000,
           ),
-          economy_fare: new Prisma.Decimal(economyFare),
-          business_fare: new Prisma.Decimal(businessFare),
+          economy_fare: new Prisma.Decimal(economy_fare),
+          business_fare: new Prisma.Decimal(business_fare),
           first_fare: new Prisma.Decimal(0),
           economy_seats: 180,
           business_seats: 20,
