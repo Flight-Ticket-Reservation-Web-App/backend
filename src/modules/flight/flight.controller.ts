@@ -10,7 +10,7 @@ import {
   Param,
   BadRequestException,
   Patch,
-  Put
+  Put,
 } from '@nestjs/common';
 import { FlightService } from '@/modules/flight/flight.service';
 import { SearchFlightDto } from '@/modules/flight/dto/search-flight.dto';

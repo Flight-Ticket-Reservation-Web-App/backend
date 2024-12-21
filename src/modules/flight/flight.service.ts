@@ -559,6 +559,7 @@ export class FlightService {
     // Combine and format flight data
     const combinedFlights = [
       ...domesticFlights.map((flight) => ({
+        id: flight.id,
         type: 'DOMESTIC',
         airline: flight.airlines?.airline_name || 'Unknown Airline', // Fallback if no airline match
         airlineCode: flight.airlines?.aircode || 'Unknown Code',
@@ -571,9 +572,10 @@ export class FlightService {
         price: flight.economy_fare.toNumber(),
       })),
       ...internationalFlights.map((flight) => ({
+        id: flight.id,
         type: 'INTERNATIONAL',
-        airline: flight.airlines?.airline_name || 'Unknown Airline', // Fallback if no airline match
-        airlineCode: flight.airlines?.aircode || 'Unknown Code',
+        airline: flight.airlines?.airline_name,
+        airlineCode: flight.airlines?.aircode,
         flightNo: flight.flight_no,
         departure: formatTimeOnly(flight.depart_time),
         arrival: formatTimeOnly(flight.arrival_time),

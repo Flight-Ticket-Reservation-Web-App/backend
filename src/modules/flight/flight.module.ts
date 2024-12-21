@@ -4,11 +4,10 @@ import { FlightController } from '@/modules/flight/flight.controller';
 import { PrismaService } from '@/prisma/prisma.service';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { AdminFlightController } from '@/modules/flight/admin-flight.controller';
 
 @Module({
   imports: [PrismaModule, MailerModule],
-  controllers: [FlightController, AdminFlightController],
+  controllers: [FlightController],
   providers: [FlightService, PrismaService],
 })
 export class FlightModule {}
