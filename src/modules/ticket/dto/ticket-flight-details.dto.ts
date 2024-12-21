@@ -9,6 +9,7 @@ export class TicketFlightDetailsDto {
   destination: string;
   departDate: Date;
   departTime: string;
+  arrivalDate: Date;  
   arrivalTime: string;
   gate?: string;
   status: FlightStatus;
@@ -16,5 +17,5 @@ export class TicketFlightDetailsDto {
   passengerName: string;
   seatNumber: string;
   cabinClass: string;
-  duration: number;  // Add this field
+  duration: number; 
 }

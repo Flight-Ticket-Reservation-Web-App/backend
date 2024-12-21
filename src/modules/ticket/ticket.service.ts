@@ -173,7 +173,6 @@ export class TicketService {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
-            timeZone: 'UTC',
           }),
           tickets: tickets.map((ticket) => ({
             ticketNumber: ticket.ticket_number,
@@ -316,7 +315,10 @@ export class TicketService {
     departDateTime.setUTCMinutes(flightDetails.depart_time.getUTCMinutes());
 
     // Calculate arrival time based on departure time and duration
-    const arrivalDateTime = this.calculateArrivalTime(departDateTime, flightDetails.duration);
+    const arrivalDateTime = this.calculateArrivalTime(
+      departDateTime,
+      flightDetails.duration,
+    );
 
     return {
       ticketNumber: ticketDetails.ticket_number,
@@ -327,8 +329,9 @@ export class TicketService {
       destination: flightDetails.destination,
       departDate: departDateTime,
       departTime: this.formatTimeOnly(departDateTime),
+      arrivalDate: arrivalDateTime, 
       arrivalTime: this.formatTimeOnly(arrivalDateTime),
-      duration: flightDetails.duration, 
+      duration: flightDetails.duration,
       gate: flightDetails.gate,
       status: this.determineFlightStatus(flightDetails.delay_duration),
       delayDuration: flightDetails.delay_duration || undefined,
@@ -343,18 +346,21 @@ export class TicketService {
     return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
   }
 
-  private calculateArrivalTime(departTime: Date, durationMinutes: number): Date {
+  private calculateArrivalTime(
+    departTime: Date,
+    durationMinutes: number,
+  ): Date {
     // Create a new date object to avoid modifying the original
     const arrivalTime = new Date(departTime);
-    
+
     // Calculate hours and minutes from duration
     const hoursToAdd = Math.floor(durationMinutes / 60);
     const minutesToAdd = durationMinutes % 60;
-    
+
     // Add hours and minutes
     arrivalTime.setUTCHours(arrivalTime.getUTCHours() + hoursToAdd);
     arrivalTime.setUTCMinutes(arrivalTime.getUTCMinutes() + minutesToAdd);
-    
+
     return arrivalTime;
   }
 
