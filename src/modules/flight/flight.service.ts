@@ -14,65 +14,15 @@ import { PaginationDto } from '@/common/dto/pagination.dto';
 import { buildQueryOptions } from '@/utils/query';
 import { UpdateFlightDto } from './dto/update-flight.dto';
 import { CreateFlightDto } from './dto/create-flight.dto';
+import {
+  calculateArrivalDate,
+  combineDateAndTime,
+  formatTimeOnly,
+  validateAirportCode,
+} from '@/utils/helper';
 @Injectable()
 export class FlightService {
   constructor(private readonly prisma: PrismaService) {}
-
-  // Domestic Flights
-  async findAllDomestic(): Promise<domestic_flights[]> {
-    return this.prisma.domestic_flights.findMany();
-  }
-
-  async findOneDomestic(id: string): Promise<domestic_flights> {
-    return this.prisma.domestic_flights.findUnique({ where: { id } });
-  }
-
-  async createDomestic(flight: domestic_flights): Promise<domestic_flights> {
-    return this.prisma.domestic_flights.create({ data: flight });
-  }
-
-  async updateDomestic(
-    id: string,
-    flight: domestic_flights,
-  ): Promise<domestic_flights> {
-    return this.prisma.domestic_flights.update({
-      where: { id },
-      data: flight,
-    });
-  }
-
-  async deleteDomestic(id: string): Promise<domestic_flights> {
-    return this.prisma.domestic_flights.delete({ where: { id } });
-  }
-
-  // International Flights
-  async findAllInternational(): Promise<international_flights[]> {
-    return this.prisma.international_flights.findMany();
-  }
-
-  async findOneInternational(id: string): Promise<international_flights> {
-    return this.prisma.international_flights.findUnique({ where: { id } });
-  }
-
-  async createInternational(
-    flight: international_flights,
-  ): Promise<international_flights> {
-    return this.prisma.international_flights.create({ data: flight });
-  }
-
-  async updateInternational(
-    id: string,
-    flight: international_flights,
-  ): Promise<international_flights> {
-    return this.prisma.international_flights.update({
-      where: { id },
-      data: flight,
-    });
-  }
-
-  async deleteInternational(id: string): Promise<international_flights> {
-    return this.prisma.international_flights.delete({ where: { id } });
-  }
 
   async searchFlights(searchParams: SearchFlightDto): Promise<{
     outboundFlights: FlightSearchResponseDto[];
@@ -126,13 +76,6 @@ export class FlightService {
     );
 
     return { outboundFlights, returnFlights };
-  }
-
-  private formatTimeOnly(date: Date): string {
-    const utcHours = date.getUTCHours();
-    const utcMinutes = date.getUTCMinutes();
-
-    return `${utcHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`;
   }
 
   private async searchOneWayFlights(
@@ -202,11 +145,8 @@ export class FlightService {
           return null;
         }
 
-        const departDateTime = this.combineDateAndTime(
-          date,
-          flight.depart_time,
-        );
-        const arrivalDateTime = this.calculateArrivalDate(
+        const departDateTime = combineDateAndTime(date, flight.depart_time);
+        const arrivalDateTime = calculateArrivalDate(
           departDateTime,
           flight.duration,
           flight.arrival_weekday - flight.depart_weekday,
@@ -216,9 +156,9 @@ export class FlightService {
           index: flight.id,
           origin: flight.origin,
           destination: flight.destination,
-          departTime: this.formatTimeOnly(departDateTime),
+          departTime: formatTimeOnly(departDateTime),
           departDate: departDateTime.toISOString(),
-          arrivalTime: this.formatTimeOnly(arrivalDateTime),
+          arrivalTime: formatTimeOnly(arrivalDateTime),
           arrivalDate: arrivalDateTime.toISOString(),
           duration: flight.duration,
           airline: flight.airlines?.airline_name || 'Unknown Airline', // Access airline_name from the airlines relation
@@ -229,25 +169,6 @@ export class FlightService {
         } as FlightSearchResponseDto;
       })
       .filter((flight): flight is FlightSearchResponseDto => flight !== null);
-  }
-
-  private combineDateAndTime(date: Date, time: Date): Date {
-    const combined = new Date(date);
-    combined.setUTCHours(time.getUTCHours());
-    combined.setUTCMinutes(time.getUTCMinutes()); // Fix: Was using hours instead of minutes
-    combined.setUTCSeconds(0);
-    combined.setUTCMilliseconds(0);
-    return combined;
-  }
-
-  private calculateArrivalDate(
-    departDate: Date,
-    duration: number,
-    daysDiff: number,
-  ): Date {
-    const arrivalDate = new Date(departDate);
-    arrivalDate.setMinutes(arrivalDate.getMinutes() + duration);
-    return arrivalDate;
   }
 
   async getBookings(paginationDto: PaginationDto) {
@@ -316,7 +237,12 @@ export class FlightService {
             where: { id: flight.flight_id },
             select: {
               flight_no: true,
-              airlines: true, // Assuming airlines is a string for domestic flights
+              airlines: {
+                select: {
+                  airline_name: true,
+                  aircode: true,
+                },
+              },
               origin: true,
               destination: true,
               depart_time: true,
@@ -324,40 +250,35 @@ export class FlightService {
             },
           });
         } else if (flight.flight_type === 'INTERNATIONAL') {
-          const internationalFlightDetails =
-            await this.prisma.international_flights.findUnique({
-              where: { id: flight.flight_id },
-              select: {
-                flight_no: true,
-                origin: true,
-                destination: true,
-                depart_time: true,
-                arrival_time: true,
-                airlines: {
-                  select: {
-                    airline_name: true, // Retrieve the airline_name
-                  },
+          flightDetails = await this.prisma.international_flights.findUnique({
+            where: { id: flight.flight_id },
+            select: {
+              flight_no: true,
+              airlines: {
+                select: {
+                  airline_name: true,
+                  aircode: true,
                 },
               },
-            });
-
-          if (internationalFlightDetails) {
-            const { airlines, ...rest } = internationalFlightDetails; // Destructure airlines
-            flightDetails = {
-              ...rest,
-              airline: airlines?.airline_name, // Extract only airline_name
-            };
-          }
+              origin: true,
+              destination: true,
+              depart_time: true,
+              arrival_time: true,
+            },
+          });
         }
 
         if (!flightDetails) return null;
 
         const totalPassengers = flight.booking.booking_passengers.length;
 
-        // Prepare the final flight details with only the airline_name
+        // Flatten airlines data
+        const { airlines, ...flightData } = flightDetails;
+
         return {
-          ...flightDetails,
-          airline: flightDetails.airline, // Include only the airline_name here
+          ...flightData,
+          airline: airlines?.airline_name || 'Unknown Airline',
+          aircode: airlines?.aircode || 'N/A',
           route: `${flightDetails.origin} - ${flightDetails.destination}`,
           departure: dayjs(flightDetails.depart_time).format('hh:mm A'),
           arrival: dayjs(flightDetails.arrival_time).format('hh:mm A'),
@@ -511,8 +432,8 @@ export class FlightService {
         airline: flight.airlines?.airline_name || 'Unknown Airline', // Fallback if no airline match
         airlineCode: flight.airlines?.aircode || 'Unknown Code',
         flightNo: flight.flight_no,
-        departure: this.formatTimeOnly(flight.depart_time),
-        arrival: this.formatTimeOnly(flight.arrival_time),
+        departure: formatTimeOnly(flight.depart_time),
+        arrival: formatTimeOnly(flight.arrival_time),
         duration: `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m`,
         origin: flight.origin,
         destination: flight.destination,
@@ -523,8 +444,8 @@ export class FlightService {
         airline: flight.airlines?.airline_name || 'Unknown Airline', // Fallback if no airline match
         airlineCode: flight.airlines?.aircode || 'Unknown Code',
         flightNo: flight.flight_no,
-        departure: this.formatTimeOnly(flight.depart_time),
-        arrival: this.formatTimeOnly(flight.arrival_time),
+        departure: formatTimeOnly(flight.depart_time),
+        arrival: formatTimeOnly(flight.arrival_time),
         duration: `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m`,
         origin: flight.origin,
         destination: flight.destination,
@@ -565,8 +486,8 @@ export class FlightService {
         flightNo: domesticFlight.flight_no,
         origin: domesticFlight.origin,
         destination: domesticFlight.destination,
-        departTime: this.formatTimeOnly(domesticFlight.depart_time),
-        arrivalTime: this.formatTimeOnly(domesticFlight.arrival_time),
+        departTime: formatTimeOnly(domesticFlight.depart_time),
+        arrivalTime: formatTimeOnly(domesticFlight.arrival_time),
         duration: `${Math.floor(domesticFlight.duration / 60)}h ${domesticFlight.duration % 60}m`,
         economyFare: domesticFlight.economy_fare.toNumber(),
         businessFare: domesticFlight.business_fare.toNumber(),
@@ -592,8 +513,8 @@ export class FlightService {
         flightNo: internationalFlight.flight_no,
         origin: internationalFlight.origin,
         destination: internationalFlight.destination,
-        departTime: this.formatTimeOnly(internationalFlight.depart_time),
-        arrivalTime: this.formatTimeOnly(internationalFlight.arrival_time),
+        departTime: formatTimeOnly(internationalFlight.depart_time),
+        arrivalTime: formatTimeOnly(internationalFlight.arrival_time),
         duration: `${Math.floor(internationalFlight.duration / 60)}h ${internationalFlight.duration % 60}m`,
         economyFare: internationalFlight.economy_fare.toNumber(),
         businessFare: internationalFlight.business_fare.toNumber(),
@@ -613,12 +534,12 @@ export class FlightService {
 
     // Validate origin if provided
     if (origin) {
-      await this.validateAirportCode(origin, 'origin');
+      await validateAirportCode(origin, 'origin');
     }
 
     // Validate destination if provided
     if (destination) {
-      await this.validateAirportCode(destination, 'destination');
+      await validateAirportCode(destination, 'destination');
     }
 
     // Derive the new flight number if aircode or flightNoSuffix is provided
@@ -663,25 +584,12 @@ export class FlightService {
     );
   }
 
-  async validateAirportCode(
-    code: string,
-    type: 'origin' | 'destination',
-  ): Promise<void> {
-    const airportExists = await this.prisma.airports.findUnique({
-      where: { code },
-    });
-
-    if (!airportExists) {
-      throw new BadRequestException(`${type} code '${code}' is not valid.`);
-    }
-  }
-
   async createFlight(createFlightDto: CreateFlightDto): Promise<any> {
     const { aircode, flightNoSuffix, origin, destination } = createFlightDto;
 
     // Validate origin and destination
-    await this.validateAirportCode(origin, 'origin');
-    await this.validateAirportCode(destination, 'destination');
+    await validateAirportCode(origin, 'origin');
+    await validateAirportCode(destination, 'destination');
 
     // Derive flightNo from aircode and flightNoSuffix
     const flightNo = `${aircode}${flightNoSuffix}`;
@@ -704,20 +612,20 @@ export class FlightService {
       const {
         aircode,
         flightNoSuffix,
-        departureTime,
-        arrivalTime,
+        departure_time,
+        arrival_time,
         ...flightData
       } = createFlightDto;
       return this.prisma.domestic_flights.create({
         data: {
           flight_no: flightNo,
-          depart_time: new Date(departureTime),
-          arrival_time: new Date(arrivalTime),
-          depart_weekday: new Date(departureTime).getDay(),
-          arrival_weekday: new Date(arrivalTime).getDay(),
+          depart_time: new Date(departure_time),
+          arrival_time: new Date(arrival_time),
+          depart_weekday: new Date(departure_time).getDay(),
+          arrival_weekday: new Date(arrival_time).getDay(),
           duration: Math.round(
-            (new Date(arrivalTime).getTime() -
-              new Date(departureTime).getTime()) /
+            (new Date(arrival_time).getTime() -
+              new Date(departure_time).getTime()) /
               60000,
           ),
           origin: origin,
@@ -743,8 +651,8 @@ export class FlightService {
       const {
         aircode,
         flightNoSuffix,
-        departureTime,
-        arrivalTime,
+        departure_time,
+        arrival_time,
         economyFare,
         businessFare,
         ...flightData
@@ -752,13 +660,13 @@ export class FlightService {
       return this.prisma.international_flights.create({
         data: {
           flight_no: flightNo,
-          depart_time: new Date(departureTime),
-          arrival_time: new Date(arrivalTime),
-          depart_weekday: new Date(departureTime).getDay(),
-          arrival_weekday: new Date(arrivalTime).getDay(),
+          depart_time: new Date(departure_time),
+          arrival_time: new Date(arrival_time),
+          depart_weekday: new Date(departure_time).getDay(),
+          arrival_weekday: new Date(arrival_time).getDay(),
           duration: Math.round(
-            (new Date(arrivalTime).getTime() -
-              new Date(departureTime).getTime()) /
+            (new Date(arrival_time).getTime() -
+              new Date(departure_time).getTime()) /
               60000,
           ),
           economy_fare: new Prisma.Decimal(economyFare),
@@ -795,25 +703,4 @@ export class FlightService {
       );
     }
   }
-
-  // async validateAircodeAndAirports(
-  //   origin: string,
-  //   destination: string,
-  // ): Promise<void> {
-  //   // Check if origin and destination codes exist in the airports table
-  //   const [originExists, destinationExists] = await Promise.all([
-  //     this.prisma.airports.findUnique({ where: { code: origin } }),
-  //     this.prisma.airports.findUnique({ where: { code: destination } }),
-  //   ]);
-
-  //   if (!originExists) {
-  //     throw new BadRequestException(`Origin code '${origin}' is not valid.`);
-  //   }
-
-  //   if (!destinationExists) {
-  //     throw new BadRequestException(
-  //       `Destination code '${destination}' is not valid.`,
-  //     );
-  //   }
-  // }
 }
