@@ -20,7 +20,7 @@ export class PaginationDto {
 
   @IsOptional()
   @IsString()
-  sortBy?: string = 'updated_at';
+  sortBy?: string;
 
   @IsOptional()
   @IsEnum(['asc', 'desc'], {
