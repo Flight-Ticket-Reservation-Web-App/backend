@@ -36,7 +36,10 @@ export class UserService {
       throw new ConflictException('Activation code has expired');
     }
 
-    const isSamePassword = await comparePasswordHelper(newPassword, user.password);
+    const isSamePassword = await comparePasswordHelper(
+      newPassword,
+      user.password,
+    );
     if (isSamePassword) {
       throw new BadRequestException('New password must be different');
     }
