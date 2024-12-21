@@ -120,7 +120,12 @@ export class TicketService {
             // Flight details
             flightId: ticket.flight_id,
             flightNo: flightDetails.flight_no,
-            airline: flightDetails.airline,
+            // airline: flightDetails.aircode,
+            airlines: (
+              await this.prisma.airlines.findUnique({
+                where: { aircode: flightDetails.aircode },
+              })
+            )?.airline_name,
             flightDate: formatDate(new Date(bookingFlight.flight_date)),
             origin: flightDetails.origin,
             destination: flightDetails.destination,

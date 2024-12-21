@@ -141,12 +141,16 @@ export class FlightService {
   ): Promise<FlightSearchResponseDto[]> {
     const weekday = date.getDay() === 0 ? 6 : date.getDay() - 1;
 
+    // Fetch domestic and international flights with airline information
     const [domesticFlights, internationalFlights] = await Promise.all([
       this.prisma.domestic_flights.findMany({
         where: {
           origin,
           destination,
           depart_weekday: weekday,
+        },
+        include: {
+          airlines: true, // Include airline details
         },
       }),
       this.prisma.international_flights.findMany({
@@ -155,9 +159,13 @@ export class FlightService {
           destination,
           depart_weekday: weekday,
         },
+        include: {
+          airlines: true, // Include airline details
+        },
       }),
     ]);
 
+    // Combine flights into a single array with type annotations
     const allFlights = [
       ...domesticFlights.map((f) => ({ ...f, type: 'DOMESTIC' })),
       ...internationalFlights.map((f) => ({ ...f, type: 'INTERNATIONAL' })),
@@ -178,7 +186,7 @@ export class FlightService {
             availableSeats = flight.available_economy_seats;
         }
 
-        // Skip if no seats available for selected class
+        // Skip if no seats available for the selected class
         if (availableSeats < passengers) {
           return null;
         }
@@ -210,7 +218,7 @@ export class FlightService {
           arrivalTime: this.formatTimeOnly(arrivalDateTime),
           arrivalDate: arrivalDateTime.toISOString(),
           duration: flight.duration,
-          airline: flight.airline,
+          airline: flight.airlines?.airline_name || 'Unknown Airline', // Access airline_name from the airlines relation
           flightNo: flight.flight_no,
           availableSeats,
           economyFare: economyFare,
@@ -306,7 +314,7 @@ export class FlightService {
             where: { id: flight.flight_id },
             select: {
               flight_no: true,
-              airline: true,
+              airlines: true,
               origin: true,
               destination: true,
               depart_time: true,
@@ -318,7 +326,7 @@ export class FlightService {
             where: { id: flight.flight_id },
             select: {
               flight_no: true,
-              airline: true,
+              airlines: true,
               origin: true,
               destination: true,
               depart_time: true,
@@ -383,7 +391,11 @@ export class FlightService {
           where: {
             OR: [
               { flight_no: { contains: search, mode: 'insensitive' } },
-              { airline: { contains: search, mode: 'insensitive' } },
+              {
+                airlines: {
+                  airline_name: { contains: search, mode: 'insensitive' },
+                },
+              },
               { origin: { contains: search, mode: 'insensitive' } },
               { destination: { contains: search, mode: 'insensitive' } },
             ],
@@ -394,7 +406,11 @@ export class FlightService {
           where: {
             OR: [
               { flight_no: { contains: search, mode: 'insensitive' } },
-              { airline: { contains: search, mode: 'insensitive' } },
+              {
+                airlines: {
+                  airline_name: { contains: search, mode: 'insensitive' },
+                },
+              },
               { origin: { contains: search, mode: 'insensitive' } },
               { destination: { contains: search, mode: 'insensitive' } },
             ],
@@ -404,175 +420,80 @@ export class FlightService {
 
     return flights.map((flight) => flight.id);
   }
-  // async getSchedules(
-  //   origin: string,
-  //   destination: string,
-  //   date: Date,
-  //   cabinClass: CabinClass,
-  // ): Promise<
-  //   {
-  //     airline: string;
-  //     logo: string;
-  //     flight_no: string;
-  //     departure: string;
-  //     arrival: string;
-  //     duration: string;
-  //     origin: string;
-  //     destination: string;
-  //     price: number;
-  //   }[]
-  // > {
-  //   const weekday = date.getDay() === 0 ? 6 : date.getDay() - 1;
 
-  //   const [domesticFlights, internationalFlights] = await Promise.all([
-  //     this.prisma.domestic_flights.findMany({
-  //       where: {
-  //         origin,
-  //         destination,
-  //         depart_weekday: weekday,
-  //       },
-  //     }),
-  //     this.prisma.international_flights.findMany({
-  //       where: {
-  //         origin,
-  //         destination,
-  //         depart_weekday: weekday,
-  //       },
-  //     }),
-  //   ]);
-
-  //   const allFlights = [
-  //     ...domesticFlights.map((f) => ({ ...f, type: 'DOMESTIC' })),
-  //     ...internationalFlights.map((f) => ({ ...f, type: 'INTERNATIONAL' })),
-  //   ];
-
-  //   return allFlights
-  //     .map((flight) => {
-  //       let availableSeats: number;
-  //       let fare: number;
-
-  //       switch (cabinClass) {
-  //         case CabinClass.ECONOMY:
-  //           availableSeats = flight.available_economy_seats || 0;
-  //           fare = Number(flight.economy_fare);
-  //           break;
-  //         case CabinClass.BUSINESS:
-  //           availableSeats = flight.available_business_seats || 0;
-  //           fare = Number(flight.business_fare);
-  //           break;
-  //         case CabinClass.FIRST:
-  //           availableSeats = flight.available_first_seats || 0;
-  //           fare = Number(flight.first_fare);
-  //           break;
-  //         default:
-  //           availableSeats = flight.available_economy_seats || 0;
-  //           fare = Number(flight.economy_fare);
-  //       }
-
-  //       if (availableSeats <= 0 || fare <= 0) {
-  //         return null;
-  //       }
-
-  //       const departDateTime = this.combineDateAndTime(
-  //         date,
-  //         flight.depart_time,
-  //       );
-  //       const arrivalDateTime = this.calculateArrivalDate(
-  //         departDateTime,
-  //         flight.duration,
-  //         flight.arrival_weekday - flight.depart_weekday,
-  //       );
-
-  //       const durationHours = Math.floor(flight.duration / 60);
-  //       const durationMinutes = flight.duration % 60;
-
-  //       return {
-  //         airline: flight.airline,
-  //         logo: `/logos/${flight.airline_code.toLowerCase()}.png`,
-  //         flight_no: flight.flight_no,
-  //         departure: this.formatTimeOnly(departDateTime),
-  //         arrival: this.formatTimeOnly(arrivalDateTime),
-  //         duration: `${durationHours}h ${durationMinutes}m`,
-  //         origin: flight.origin,
-  //         destination: flight.destination,
-  //         price: fare,
-  //       };
-  //     })
-  //     .filter(
-  //       (flight): flight is NonNullable<typeof flight> => flight !== null,
-  //     );
-  // }
   async getAllFlights(queryParams: PaginationDto) {
     const {
       page = 1,
       limit = 20,
       search,
       sortBy = 'depart_time',
-      sortOrder,
+      sortOrder = 'asc',
     } = queryParams;
 
-    const defaultType = 'DOMESTIC'; // Default to "domestic" flights
     const defaultWeekday = new Date().getDay(); // Default to today's weekday
 
-    // Build query options for domestic flights with default filters
+    // Query options for domestic flights
     const queryOptionsDomestic = buildQueryOptions<
       Prisma.domestic_flightsWhereInput,
       Prisma.domestic_flightsOrderByWithRelationInput
     >(
-      {
-        page,
-        limit,
-        search,
-        sortBy,
-        sortOrder,
-      },
-      ['flight_no', 'airline', 'origin', 'destination'], // Searchable fields
+      { page, limit, search, sortBy, sortOrder },
+      ['flight_no', 'origin', 'destination'], // Searchable fields
     );
-
     queryOptionsDomestic.where = {
       ...queryOptionsDomestic.where,
       depart_weekday: defaultWeekday,
     };
 
-    // Build query options for international flights with default filters
+    // Query options for international flights
     const queryOptionsInternational = buildQueryOptions<
       Prisma.international_flightsWhereInput,
       Prisma.international_flightsOrderByWithRelationInput
     >(
-      {
-        page,
-        limit,
-        search,
-        sortBy,
-        sortOrder,
-      },
-      ['flight_no', 'airline', 'origin', 'destination'], // Searchable fields
+      { page, limit, search, sortBy, sortOrder },
+      ['flight_no', 'origin', 'destination'], // Searchable fields
     );
-
     queryOptionsInternational.where = {
       ...queryOptionsInternational.where,
       depart_weekday: defaultWeekday,
     };
 
-    // Fetch domestic flights
+    // Fetch domestic flights with airline data by joining on aircode
     const domesticFlights = await this.prisma.domestic_flights.findMany({
       where: queryOptionsDomestic.where,
       orderBy: queryOptionsDomestic.orderBy,
+      include: {
+        airlines: {
+          select: {
+            airline_name: true,
+            aircode: true,
+          },
+        },
+      },
     });
 
-    // Fetch international flights
+    // Fetch international flights with airline data by joining on aircode
     const internationalFlights =
       await this.prisma.international_flights.findMany({
         where: queryOptionsInternational.where,
         orderBy: queryOptionsInternational.orderBy,
+        include: {
+          airlines: {
+            select: {
+              airline_name: true,
+              aircode: true,
+            },
+          },
+        },
       });
 
     // Combine and format flight data
     const combinedFlights = [
       ...domesticFlights.map((flight) => ({
         type: 'DOMESTIC',
-        airline: flight.airline,
-        flight_no: flight.flight_no,
+        airline: flight.airlines?.airline_name || 'Unknown Airline', // Fallback if no airline match
+        airlineCode: flight.airlines?.aircode || 'Unknown Code',
+        flightNo: flight.flight_no,
         departure: this.formatTimeOnly(flight.depart_time),
         arrival: this.formatTimeOnly(flight.arrival_time),
         duration: `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m`,
@@ -582,8 +503,9 @@ export class FlightService {
       })),
       ...internationalFlights.map((flight) => ({
         type: 'INTERNATIONAL',
-        airline: flight.airline,
-        flight_no: flight.flight_no,
+        airline: flight.airlines?.airline_name || 'Unknown Airline', // Fallback if no airline match
+        airlineCode: flight.airlines?.aircode || 'Unknown Code',
+        flightNo: flight.flight_no,
         departure: this.formatTimeOnly(flight.depart_time),
         arrival: this.formatTimeOnly(flight.arrival_time),
         duration: `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m`,

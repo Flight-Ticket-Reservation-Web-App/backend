@@ -18,8 +18,6 @@ model domestic_flights {
   origin                   String
   destination              String
   flight_no                String
-  airline_code             String
-  airline                  String
   depart_time              DateTime @db.Time(6)
   depart_weekday           Int
   duration                 Int
@@ -35,14 +33,14 @@ model domestic_flights {
   available_business_seats Int?
   available_first_seats    Int?
   id                       String   @id @default(dbgenerated("nextval('domestic_flights_id_seq'::regclass)"))
+  aircode                  String   @db.VarChar(10)
+  airlines                 airlines @relation(fields: [aircode], references: [aircode], onDelete: NoAction, onUpdate: NoAction, map: "fk_domestic_airline")
 }
 
 model international_flights {
   origin                   String
   destination              String
   flight_no                String
-  airline_code             String
-  airline                  String
   id                       String   @id(map: "PK_e5243c5e47f4a5d34145a59f647") @default(dbgenerated("nextval('international_flights_index_seq'::regclass)"))
   depart_time              DateTime @db.Time(6)
   depart_weekday           Int
@@ -58,6 +56,8 @@ model international_flights {
   available_economy_seats  Int?
   available_business_seats Int?
   available_first_seats    Int?
+  aircode                  String   @db.VarChar(10)
+  airlines                 airlines @relation(fields: [aircode], references: [aircode], onDelete: NoAction, onUpdate: NoAction, map: "fk_international_airline")
 }
 
 model user {
@@ -149,6 +149,13 @@ model news {
   user       user         @relation(fields: [admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_admin_id")
 
   @@index([category], map: "idx_news_category")
+}
+
+model airlines {
+  aircode               String                  @id @db.VarChar(10)
+  airline_name          String                  @db.VarChar(255)
+  domestic_flights      domestic_flights[]
+  international_flights international_flights[]
 }
 
 enum Role {
